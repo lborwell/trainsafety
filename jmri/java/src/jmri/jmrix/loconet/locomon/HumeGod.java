@@ -1,11 +1,7 @@
-/*
- * To change this license header, choose License Headers in Project Properties.
- * To change this template file, choose Tools | Templates
- * and open the template in the editor.
- */
-
 package jmri.jmrix.loconet.locomon;
 
+import java.net.ServerSocket;
+import java.net.Socket;
 import jmri.jmrix.loconet.LocoNetSystemConnectionMemo;
 
 /**
@@ -14,10 +10,26 @@ import jmri.jmrix.loconet.LocoNetSystemConnectionMemo;
  */ 
 public class HumeGod {
     public HumeGod(LocoNetSystemConnectionMemo m){
-        HumeListener hl = new HumeListener();
-        hl.init(m);
-        (new Thread(hl)).start();
-        HumeSender hs = new HumeSender();
-        hs.init(m);
+        ServerSocket serverSocket = null;
+        
+        try{
+            serverSocket = new ServerSocket(55555);
+        }catch(Exception e){ e.printStackTrace(); }
+        
+        while(true){
+            try{
+                Socket inSock = serverSocket.accept();
+                Socket outSock = serverSocket.accept();
+                
+                (new Thread(new HumeListener(m,inSock))).start();
+                HumeSender hs = new HumeSender(m,outSock);
+            }catch(Exception e){ e.printStackTrace(); }
+        }
+        
+        //HumeListener hl = new HumeListener();
+        //hl.init(m);
+        //(new Thread(hl)).start();
+        //HumeSender hs = new HumeSender();
+        //hs.init(m);
     }
 }
