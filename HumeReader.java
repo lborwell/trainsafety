@@ -1,10 +1,8 @@
 import java.net.*;
 import java.util.Scanner;
+import java.io.*;
 
 public class HumeReader{
-    int portNum = 55555;
-    DatagramSocket ss;
-    
     public static void main(String[] argv){
     	System.out.println("Begin");
     	HumeReader hr = new HumeReader();
@@ -12,31 +10,47 @@ public class HumeReader{
 
     public HumeReader(){
         try{
-         	ss = new DatagramSocket(portNum);
-            (new Thread(new Sendah())).start();
-            sendM();
+            Socket conn;
+            conn = new Socket("localhost",55555);
+            (new Thread(new Sendah(conn))).start();
+            conn = new Socket("localhost",55555);
+            (new Thread(new Receivah(conn))).start();
         }catch(Exception e){ e.printStackTrace(); }
     }
     
-    public void sendM() {
-    	Scanner s = new Scanner(System.in);
-    	while(true){
-        	try{
-        		byte[] inp = new byte[255];
-                DatagramPacket inppac = new DatagramPacket(inp, inp.length);
-                ss.receive(inppac);
-                System.out.println("Received: " + new String(inp,0,inp.length));
-        	}catch(Exception e){ e.printStackTrace(); }
+    class Receivah implements Runnable{
+        Socket s;
+        BufferedReader br;
+
+        public Receivah(Socket s){
+            this.s = s;
+
+            try{
+                br = new BufferedReader(new InputStreamReader(s.getInputStream()));
+            }catch(Exception e){ e.printStackTrace(); }
+        }
+
+        public void run(){
+            while(true){
+                try{
+                    String inp = null;
+                    while(inp == null)
+                        inp = br.readLine();
+                    System.out.println("Received: " + inp);
+                }catch(Exception e){ e.printStackTrace(); }
+            }
         }
     }
     
     class Sendah implements Runnable{
-        int port = 55557;
-        DatagramSocket ss;
+        Socket s;
+        PrintWriter pw;
 
-        public Sendah(){
+        public Sendah(Socket s){
+            this.s = s;
+
             try{
-                ss = new DatagramSocket(port);
+                pw = new PrintWriter(s.getOutputStream(), true);
             }catch(Exception e){ e.printStackTrace(); }
         }
 
@@ -45,8 +59,7 @@ public class HumeReader{
             while(true){
                 try{
                     String inp = s.nextLine();
-                    DatagramPacket dp = new DatagramPacket(inp.getBytes(),inp.length(),InetAddress.getLocalHost(),55556);
-                    ss.send(dp);
+                    pw.println(inp);
                     System.out.println("Sent message: " + inp);
                 }catch(Exception e){
                     e.printStackTrace();

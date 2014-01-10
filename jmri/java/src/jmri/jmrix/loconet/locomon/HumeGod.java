@@ -10,26 +10,30 @@ import jmri.jmrix.loconet.LocoNetSystemConnectionMemo;
  */ 
 public class HumeGod {
     public HumeGod(LocoNetSystemConnectionMemo m){
+        (new Thread(new ClientAccepter(m))).start();
+    }
+    
+    class ClientAccepter implements Runnable {
+        LocoNetSystemConnectionMemo m;
         ServerSocket serverSocket = null;
         
-        try{
-            serverSocket = new ServerSocket(55555);
-        }catch(Exception e){ e.printStackTrace(); }
-        
-        while(true){
+        public ClientAccepter(LocoNetSystemConnectionMemo m){
+            this.m = m;
             try{
-                Socket inSock = serverSocket.accept();
-                Socket outSock = serverSocket.accept();
-                
-                (new Thread(new HumeListener(m,inSock))).start();
-                HumeSender hs = new HumeSender(m,outSock);
+                serverSocket = new ServerSocket(55555);
             }catch(Exception e){ e.printStackTrace(); }
         }
         
-        //HumeListener hl = new HumeListener();
-        //hl.init(m);
-        //(new Thread(hl)).start();
-        //HumeSender hs = new HumeSender();
-        //hs.init(m);
+        public void run(){
+            while(true){
+                try{
+                    Socket inSock = serverSocket.accept();
+                    Socket outSock = serverSocket.accept();
+                    
+                    (new Thread(new HumeListener(m,inSock))).start();
+                    HumeSender hs = new HumeSender(m,outSock);
+                }catch(Exception e){ e.printStackTrace(); }
+            }
+        }
     }
 }
