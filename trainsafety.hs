@@ -7,6 +7,10 @@ data Direction = FWD | BKW deriving (Show)
 data State = Justleft | Justentered | Empty | Occupied deriving (Show, Eq)
 data SensorUpdate = Hi | Low deriving (Show, Eq)
 
+data SpeedMessage = SpeedMessage { fromslot :: Int
+								 , newspeed :: Int
+								 } deriving (Show)
+
 data Section = Section { state :: State
 					   , prev :: [SensorID]
 					   , next :: [SensorID]
@@ -20,6 +24,25 @@ data Locomotive = Locomotive { slot :: Int
 							 , ide :: Int
 							 , direction :: Direction
 							 } deriving (Show)
+
+test1 :: Section
+test1 = Section { state=Occupied, prev=["T2"], next=[], speedlim=113, loco=testLoco, sid="T1" }
+
+test2 :: Section
+test2 = Section { state=Empty, prev=[], next=["T1"], speedlim=113, loco=noloco, sid="T2" }
+
+test3 :: Section
+test3 = Section { state=Occupied, prev=["T4"], next=[], speedlim=113, loco=testLoco, sid="T3" }
+
+test4 :: Section
+test4 = Section { state=Empty, prev=[], next=["T3"], speedlim=113, loco=noloco, sid="T4" }
+
+testTrack :: [(String,Section)]
+testTrack = [("T1",test1),("T2",test2),("T3",test3),("T4",test4)]
+
+testDict :: Layout
+testDict = Map.fromList testTrack
+
 
 noloco :: Locomotive
 noloco = Locomotive { slot=0, speed=0, ide=0, direction=FWD }
@@ -58,14 +81,21 @@ trackDict :: Layout
 trackDict = Map.fromList track
 
 
+speedChange :: Layout -> SpeedMessage -> Layout
+speedChange t m = Map.insert (sid sec) (sec { loco=((loco sec) { speed=(newspeed m) }) }) t
+	where sec = findLoco t (fromslot m)
+
+findLoco :: Layout -> Int -> Section
+findLoco t s = head (Map.elems (Map.filter (\x -> (slot (loco x)) == s) t))
+
 -- On sensor trigger:
 -- If sensor goes high, check prev/next sections for Justleft
 -- If justleft, take its locomotive, set this to occupied, neighbour to empty
 -- If none left, set this to justentered
 -- Opposite for sensor goes low
 
-respondToSensor :: Layout -> SensorUpdate -> SensorID -> Layout
-respondToSensor track change sensor = checkNeighbours track (track Map.! sensor) change
+sectionSensorTrigger :: Layout -> SensorUpdate -> SensorID -> Layout
+sectionSensorTrigger track change sensor = checkNeighbours track (track Map.! sensor) change
 --respondToSensor track change sensor = Map.insert sensor (checkNeighbours (track Map.! sensor) change) track
 
 checkNeighbours :: Layout -> Section -> SensorUpdate -> Layout
