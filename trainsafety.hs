@@ -2,16 +2,50 @@ import Testtracks
 
 import TrainSafetyTypes
 import qualified Data.Map as Map
+import Data.List (nub, nubBy)
 --import Debug.Trace
 
-process :: [String] -> Layout -> [String]
-process i t = makeSafe (parseInput i t)
+-- Things to detect:
+-- Two locos heading straight for each other (noting turnout positions)
+-- One loco catching another
+-- Two locos merging on a turnout
+-- Investigate emitting instructions as they are found
 
-parseInput :: [String] -> Layout -> Layout
-parseInput inp@("A0":as) t = speedChange t (parseSpeed inp)
+process :: [String] -> Layout -> [String]
+process i t = makeSafe (handleInput i t)
+
+handleInput :: [String] -> Layout -> Layout
+handleInput inp@("A0":as) t = speedChange t (parseSpeed inp)
 
 makeSafe :: Layout -> [String]
 makeSafe t = checkSpeeds t
+
+
+-------------------------------------------------
+--
+--       Detect Proximity
+--
+-------------------------------------------------
+
+listLocos :: Layout -> Layout
+listLocos t = Map.filter (\x -> (loco x) /= Noloco) t
+
+findProximity :: Layout -> [(String, String)]
+findProximity t = nubBy (\(x,y) (z,q) -> if (x==z && y==q) || (x==q && y==z) then True else False) $ checkLocos t (Map.elems (listLocos t))
+
+checkLocos :: Layout -> [Section] -> [(String, String)]
+checkLocos _ [] = []
+checkLocos t (s:ss) = map (\x -> (sid s,sid x)) (filter (\y -> (loco y) /= Noloco) (nearbySections t s 2)) ++ checkLocos t ss
+
+nearbySections :: Layout -> Section -> Int -> [Section]
+nearbySections t s i = nub $ filter (\x -> x /= s) (nearbySections' t s i)
+
+-- Find sections within Int transitions
+nearbySections' :: Layout -> Section -> Int -> [Section]
+nearbySections' _ s 0 = [s]
+nearbySections' _ (Section {prev=[], next=[]}) _ = []
+nearbySections' t s@(Section {prev=(p:ps), next=[]}) i = (nearbySections' t (t Map.! p) (i-1)) ++ (nearbySections' t (s {prev=ps}) i)
+nearbySections' t s@(Section {next=(n:ns)}) i = [s] ++ (nearbySections' t (t Map.! n) (i-1)) ++ (nearbySections' t (s {next=ns}) i)
 
 
 -------------------------------------------------
@@ -109,5 +143,4 @@ moveLoco :: Layout -> Section -> Section -> Layout
 moveLoco t from to = clearSection (Map.insert (sid to) (to {state=Occupied,loco=(loco from)}) t) from
 
 clearSection :: Layout -> Section -> Layout
-clearSection t s = Map.insert (sid s) (s {state=Empty, loco=noloco}) t
-
+clearSection t s = Map.insert (sid s) (s {state=Empty, loco=Noloco}) t
