@@ -11,15 +11,56 @@ import Data.List (nub, nubBy)
 -- Two locos merging on a turnout
 -- Investigate emitting instructions as they are found
 
-process :: [String] -> Layout -> [String]
+process :: [String] -> Layout -> [TrackInstruction]
 process i t = makeSafe (handleInput i t)
 
 handleInput :: [String] -> Layout -> Layout
 handleInput inp@("A0":as) t = speedChange t (parseSpeed inp)
 
-makeSafe :: Layout -> [String]
+makeSafe :: Layout -> [TrackInstruction]
 makeSafe t = checkSpeeds t
 
+
+-------------------------------------------------
+--
+--       Detect/Handle Adjacent Locos
+--
+-------------------------------------------------
+
+checkSections :: Layout -> [(SensorID,SensorID)] -> [TrackInstruction]
+checkSections _ [] = []
+checkSections t (s:ss) | areSectionsAdjacent t s = handleAdjacent t s ++ checkSections t ss
+					   | otherwise = checkSections t ss
+
+areSectionsAdjacent :: Layout -> (SensorID,SensorID) -> Bool
+areSectionsAdjacent t (a,b) | a `elem` (next s ++ prev s) = True
+					  		| otherwise = False
+	where s = (t Map.! b)
+
+handleAdjacent :: Layout -> (SensorID,SensorID) -> [TrackInstruction]
+handleAdjacent t (a,b) | (direction (loco s1)) == (direction (loco s2)) = following t s1 s2
+					   | otherwise = headOn t a b
+	where
+		s1 = (t Map.! a)
+		s2 = (t Map.! b)
+
+following :: Layout -> Section -> Section -> [TrackInstruction]
+following t a@(Section { loco=(Locomotive { direction=FWD }) }) b | (sid b) `elem` (next a) = matchSpeed a b --a is following b
+																  | otherwise = matchSpeed b a
+following t a@(Section { loco=(Locomotive { direction=BKW }) }) b | (sid b) `elem` (prev a) = matchSpeed a b --a is following b
+																  | otherwise = matchSpeed b a
+
+matchSpeed :: Section -> Section -> [TrackInstruction]
+matchSpeed a b | (speed la) > (speed lb) = ["0 " ++ show (slot la) ++ " " ++ show (speed lb)]
+			   | otherwise = []
+	where
+		la = loco a
+		lb = loco b
+
+headOn :: Layout -> SensorID -> SensorID -> [TrackInstruction]
+headOn t a b = stop a ++ stop b
+	where
+		stop x = "0 " ++ show (slot (loco x)) ++ " 0"
 
 -------------------------------------------------
 --
@@ -27,13 +68,15 @@ makeSafe t = checkSpeeds t
 --
 -------------------------------------------------
 
+-- Track -> All sections containing a loco
 listLocos :: Layout -> Layout
 listLocos t = Map.filter (\x -> (loco x) /= Noloco) t
 
-findProximity :: Layout -> [(String, String)]
-findProximity t = nubBy (\(x,y) (z,q) -> if (x==z && y==q) || (x==q && y==z) then True else False) $ checkLocos t (Map.elems (listLocos t))
+-- Track -> List of sections within 2 track breaks of each other both containing a locomotive
+findProximity :: Layout -> [(SensorID, SensorID)]
+findProximity t = nubBy (\(x,y) (z,q) -> (x==z && y==q) || (x==q && y==z)) $ checkLocos t (Map.elems (listLocos t))
 
-checkLocos :: Layout -> [Section] -> [(String, String)]
+checkLocos :: Layout -> [Section] -> [(SensorID, SensorID)]
 checkLocos _ [] = []
 checkLocos t (s:ss) = map (\x -> (sid s,sid x)) (filter (\y -> (loco y) /= Noloco) (nearbySections t s 2)) ++ checkLocos t ss
 
@@ -54,12 +97,12 @@ nearbySections' t s@(Section {next=(n:ns)}) i = [s] ++ (nearbySections' t (t Map
 --
 -------------------------------------------------
 
-checkSpeeds :: Layout -> [String]
+checkSpeeds :: Layout -> [TrackInstruction]
 checkSpeeds t = slowSpeeds (Map.elems speeders)
 	where	speeders = Map.filter speeding t
 		speeding (Section { speedlim=sl, loco=l }) = if (speed l) > sl then True else False
 
-slowSpeeds :: [Section] -> [String]
+slowSpeeds :: [Section] -> [TrackInstruction]
 slowSpeeds [] = []
 slowSpeeds (t:ts) = ("0 " ++ show (slot (loco t)) ++ " " ++ show (speedlim t)) : (slowSpeeds ts)
 

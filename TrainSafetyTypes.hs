@@ -3,6 +3,7 @@ module TrainSafetyTypes where
 import qualified Data.Map as Map
 
 type Layout = Map.Map String Section
+type TrackInstruction = String
 type SensorID = String
 data Direction = FWD | BKW deriving (Show, Eq)
 data TurnoutState = Set | Unset | Noturn deriving (Show, Eq)
