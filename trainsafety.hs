@@ -38,16 +38,16 @@ areSectionsAdjacent t (a,b) | a `elem` (next s ++ prev s) = True
 	where s = (t Map.! b)
 
 handleAdjacent :: Layout -> (SensorID,SensorID) -> [TrackInstruction]
-handleAdjacent t (a,b) | (direction (loco s1)) == (direction (loco s2)) = following t s1 s2
-					   | otherwise = headOn t a b
+handleAdjacent t (a,b) | (direction (loco s1)) == (direction (loco s2)) = following s1 s2
+					   | otherwise = headOn s1 s2
 	where
 		s1 = (t Map.! a)
 		s2 = (t Map.! b)
 
-following :: Layout -> Section -> Section -> [TrackInstruction]
-following t a@(Section { loco=(Locomotive { direction=FWD }) }) b | (sid b) `elem` (next a) = matchSpeed a b --a is following b
+following :: Section -> Section -> [TrackInstruction]
+following a@(Section { loco=(Locomotive { direction=FWD }) }) b | (sid b) `elem` (next a) = matchSpeed a b --a is following b
 																  | otherwise = matchSpeed b a
-following t a@(Section { loco=(Locomotive { direction=BKW }) }) b | (sid b) `elem` (prev a) = matchSpeed a b --a is following b
+following a@(Section { loco=(Locomotive { direction=BKW }) }) b | (sid b) `elem` (prev a) = matchSpeed a b --a is following b
 																  | otherwise = matchSpeed b a
 
 matchSpeed :: Section -> Section -> [TrackInstruction]
@@ -57,10 +57,10 @@ matchSpeed a b | (speed la) > (speed lb) = ["0 " ++ show (slot la) ++ " " ++ sho
 		la = loco a
 		lb = loco b
 
-headOn :: Layout -> SensorID -> SensorID -> [TrackInstruction]
-headOn t a b = stop a ++ stop b
+headOn :: Section -> Section -> [TrackInstruction]
+headOn a b = stop a ++ stop b
 	where
-		stop x = "0 " ++ show (slot (loco x)) ++ " 0"
+		stop x = ["0 " ++ show (slot (loco x)) ++ " 0"]
 
 -------------------------------------------------
 --
