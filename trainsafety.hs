@@ -22,15 +22,37 @@ makeSafe t = checkSpeeds t
 
 
 -------------------------------------------------
+---
+---      Detect/Handle Parallel Locos
+---
+-------------------------------------------------
+
+
+
+checkParallel :: Layout -> [(SensorID,SensorID)] -> [TrackInstruction]
+checkParallel _ [] = []
+checkParallel t (s:ss) | areSectionsParallel t s = handleParallel t s ++ checkParallel t ss
+					   | otherwise = checkParallel t ss
+
+areSectionsParallel :: Layout -> (SensorID,SensorID) -> Bool
+areSectionsParallel = undefined
+
+handleParallel :: Layout -> (SensorID, SensorID) -> [TrackInstruction]
+handleParallel = undefined
+
+
+
+
+-------------------------------------------------
 --
 --       Detect/Handle Adjacent Locos
 --
 -------------------------------------------------
 
-checkSections :: Layout -> [(SensorID,SensorID)] -> [TrackInstruction]
-checkSections _ [] = []
-checkSections t (s:ss) | areSectionsAdjacent t s = handleAdjacent t s ++ checkSections t ss
-					   | otherwise = checkSections t ss
+checkAdjacent :: Layout -> [(SensorID,SensorID)] -> [TrackInstruction]
+checkAdjacent _ [] = []
+checkAdjacent t (s:ss) | areSectionsAdjacent t s = handleAdjacent t s ++ checkAdjacent t ss
+					   | otherwise = checkAdjacent t ss
 
 areSectionsAdjacent :: Layout -> (SensorID,SensorID) -> Bool
 areSectionsAdjacent t (a,b) | a `elem` (next s ++ prev s) = True
