@@ -27,20 +27,42 @@ makeSafe t = checkSpeeds t
 ---
 -------------------------------------------------
 
-
-
 checkParallel :: Layout -> [(SensorID,SensorID)] -> [TrackInstruction]
 checkParallel _ [] = []
 checkParallel t (s:ss) | areSectionsParallel t s = handleParallel t s ++ checkParallel t ss
 					   | otherwise = checkParallel t ss
 
 areSectionsParallel :: Layout -> (SensorID,SensorID) -> Bool
-areSectionsParallel = undefined
+areSectionsParallel t (a,b) = any (True == ) (map (\x -> checkNext t s2 (t Map.! x)) (prev s1)) || any (True == ) (map (\x -> checkPrev t s2 (t Map.! x)) (next s1))
+	where
+		s1 = t Map.! a
+		s2 = t Map.! b
+
+checkNext :: Layout -> Section -> Section -> Bool
+checkNext t a b = any (True ==) $ map (\x -> a == (t Map.! x)) (next b)
+
+checkPrev :: Layout -> Section -> Section -> Bool
+checkPrev t a b = any (True ==) $ map (\x -> a == (t Map.! x)) (prev b)
 
 handleParallel :: Layout -> (SensorID, SensorID) -> [TrackInstruction]
-handleParallel = undefined
+handleParallel t (a,b) | oppositeParallelDirection s1 s2 = []
+					   | otherwise = sameParallelDirection s1 s2
+	where
+		s1 = t Map.! a
+		s2 = t Map.! b
 
+oppositeParallelDirection :: Section -> Section -> Bool
+oppositeParallelDirection a b = direction (loco a) /= direction (loco b)
 
+sameParallelDirection :: Section -> Section -> [TrackInstruction]
+sameParallelDirection a@(Section {loco=(Locomotive{direction=FWD})}) b | strait a && strait b = []
+																	   | otherwise = stopLoco (loco a) : [stopLoco (loco b)]
+	where
+		strait x = (nextturn x) == Noturn
+sameParallelDirection a@(Section {loco=(Locomotive{direction=BKW})}) b | strait a && strait b = []
+																	   | otherwise = stopLoco (loco a) : [stopLoco (loco b)]
+	where
+		strait x = (prevturn x) == Noturn
 
 
 -------------------------------------------------
@@ -73,16 +95,15 @@ following a@(Section { loco=(Locomotive { direction=BKW }) }) b | (sid b) `elem`
 																  | otherwise = matchSpeed b a
 
 matchSpeed :: Section -> Section -> [TrackInstruction]
-matchSpeed a b | (speed la) > (speed lb) = ["0 " ++ show (slot la) ++ " " ++ show (speed lb)]
+matchSpeed a b | (speed la) > (speed lb) = [setLocoSpeed la (speed lb)]
 			   | otherwise = []
 	where
 		la = loco a
 		lb = loco b
 
 headOn :: Section -> Section -> [TrackInstruction]
-headOn a b = stop a ++ stop b
-	where
-		stop x = ["0 " ++ show (slot (loco x)) ++ " 0"]
+headOn a b = stopLoco (loco a) : [stopLoco (loco b)]
+
 
 -------------------------------------------------
 --
@@ -126,7 +147,7 @@ checkSpeeds t = slowSpeeds (Map.elems speeders)
 
 slowSpeeds :: [Section] -> [TrackInstruction]
 slowSpeeds [] = []
-slowSpeeds (t:ts) = ("0 " ++ show (slot (loco t)) ++ " " ++ show (speedlim t)) : (slowSpeeds ts)
+slowSpeeds (t:ts) = setLocoSpeed (loco t) (speedlim t) : (slowSpeeds ts)
 
 
 -------------------------------------------------
@@ -209,3 +230,16 @@ moveLoco t from to = clearSection (Map.insert (sid to) (to {state=Occupied,loco=
 
 clearSection :: Layout -> Section -> Layout
 clearSection t s = Map.insert (sid s) (s {state=Empty, loco=Noloco}) t
+
+
+-------------------------------------------------
+---
+---      Loco Control Message Generators
+---
+-------------------------------------------------
+
+stopLoco :: Locomotive -> TrackInstruction
+stopLoco l = "0 " ++ show (slot l) ++ " 0"
+
+setLocoSpeed :: Locomotive -> Int -> TrackInstruction
+setLocoSpeed l i = "0 " ++ show (slot l) ++ " " ++ show i
