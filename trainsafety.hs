@@ -6,9 +6,9 @@ import Data.List (nub, nubBy)
 --import Debug.Trace
 
 -- Things to detect:
--- Two locos heading straight for each other (noting turnout positions)
--- One loco catching another
--- Two locos merging on a turnout
+-- Two locos heading straight for each other (noting turnout positions) (TODO: turnouts)
+-- One loco catching another  (done)
+-- Two locos merging on a turnout  (currently both stop)
 -- Investigate emitting instructions as they are found
 
 process :: [String] -> Layout -> [TrackInstruction]
