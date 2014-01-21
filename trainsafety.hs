@@ -16,9 +16,10 @@ process i t = makeSafe (handleInput i t)
 
 handleInput :: [String] -> Layout -> Layout
 handleInput inp@("A0":as) t = speedChange t (parseSpeed inp)
+handleInput inp@("sensor":as) t = sectionSensorTrigger t (parseSensor inp)
 
 makeSafe :: Layout -> [TrackInstruction]
-makeSafe t = checkSpeeds t
+makeSafe t = undefined
 
 
 -------------------------------------------------
@@ -196,8 +197,17 @@ changeDirection t m = Map.insert (sid sec) (sec { loco=((loco sec) { direction=(
 -- If none left, set this to justentered
 -- Opposite for sensor goes low
 
-sectionSensorTrigger :: Layout -> SensorUpdate -> SensorID -> Layout
-sectionSensorTrigger track change sensor = checkNeighbours track (track Map.! sensor) change
+parseSensor :: [String] -> SensorMessage
+parseSensor inp = SensorMessage { upd=up a, updid=b }
+	where
+		(_:a:b:_) = inp
+		up x = if x == "hi" then Hi else Low
+
+sectionSensorTrigger :: Layout -> SensorMessage -> Layout
+sectionSensorTrigger track msg = checkNeighbours track (track Map.! (updid msg)) (upd msg)
+
+--sectionSensorTrigger :: Layout -> SensorUpdate -> SensorID -> Layout
+--sectionSensorTrigger track change sensor = checkNeighbours track (track Map.! sensor) change
 --respondToSensor track change sensor = Map.insert sensor (checkNeighbours (track Map.! sensor) change) track
 
 checkNeighbours :: Layout -> Section -> SensorUpdate -> Layout

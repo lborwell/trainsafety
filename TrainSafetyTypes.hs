@@ -18,6 +18,10 @@ data DirectionMessage = DirectionMessage { dirslot :: Int
 										 , newdir :: Direction 
 										 } deriving (Show, Eq)
 
+data SensorMessage = SensorMessage { upd :: SensorUpdate
+								   , updid :: SensorID
+								   } deriving (Show, Eq)
+
 data Section = Section { state :: State
 					   , prev :: [SensorID]
 					   , next :: [SensorID]
