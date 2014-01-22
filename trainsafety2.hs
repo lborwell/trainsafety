@@ -12,6 +12,14 @@ findLoco t s = head (Map.elems (Map.filter (\x -> (slot (loco x)) == s) notempty
 makeSafe :: Layout -> MessageType -> String -> [TrackInstruction]
 makeSafe t Speed m = checkSpeed t m
 
+
+
+-------------------------------------------------
+---
+---      Speed Checks
+---
+-------------------------------------------------
+
 checkSpeed :: Layout -> String -> [TrackInstruction]
 checkSpeed t s = (checkSpeedLimit sec) ++ (checkFollowing t sec)
 	where
