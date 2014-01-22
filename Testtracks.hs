@@ -23,13 +23,16 @@ testDict = Map.fromList testTrack
 
 
 testLoco :: Locomotive
-testLoco = Locomotive { slot=8, speed=113, ide=2, direction=FWD }
+testLoco = Locomotive { slot=8, speed=116, ide=2, direction=FWD }
 
 testLoco2 :: Locomotive
 testLoco2 = Locomotive { slot=9, speed=113, ide=2, direction=FWD }
 
+testLoco3 :: Locomotive
+testLoco3 = Locomotive { slot=10, speed=115, ide=2, direction=FWD }
+
 a1 :: Section
-a1 = Section { state=Occupied, prev=["D1"], next=["B1"], speedlim=113, loco=Noloco, sid="A1", prevturn=Noturn, nextturn=Noturn }
+a1 = Section { state=Occupied, prev=["D1"], next=["B1"], speedlim=113, loco=testLoco3, sid="A1", prevturn=Noturn, nextturn=Noturn }
 
 a2 :: Section
 a2 = Section { state=Empty, prev=["D2","D1"], next=["B2"], speedlim=113, loco=Noloco, sid="A2", prevturn=Unset, nextturn=Noturn }
@@ -47,7 +50,7 @@ c2 :: Section
 c2 = Section { state=Empty, prev=["B2"], next=["D2"], speedlim=113, loco=Noloco, sid="C2", prevturn=Noturn, nextturn=Noturn }
 
 d1 :: Section
-d1 = Section { state=Empty, prev=["C1"], next=["A1","A2"], speedlim=113, loco=Noloco, sid="D1", prevturn=Noturn, nextturn=Unset }
+d1 = Section { state=Empty, prev=["C1"], next=["A1","A2"], speedlim=113, loco=testLoco, sid="D1", prevturn=Noturn, nextturn=Unset }
 
 d2 :: Section
 d2 = Section { state=Empty, prev=["C2"], next=["A2"], speedlim=113, loco=Noloco, sid="D2", prevturn=Noturn, nextturn=Noturn }

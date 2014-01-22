@@ -6,9 +6,13 @@ type Layout = Map.Map String Section
 type TrackInstruction = String
 type SensorID = String
 data Direction = FWD | BKW deriving (Eq)
+instance Show Direction where
+	show d = if d==FWD then "Forward" else "Backward"
+
 data TurnoutState = Set | Unset | Noturn deriving (Show, Eq)
 data State = Justleft | Justentered | Empty | Occupied deriving (Show, Eq)
 data SensorUpdate = Hi | Low deriving (Show, Eq)
+data MessageType = Speed | Direction | Sensor deriving (Show, Eq)
 
 data SpeedMessage = SpeedMessage { fromslot :: Int
 								 , newspeed :: Int
@@ -33,13 +37,7 @@ data Section = Section { state :: State
 					   }
 
 instance Eq Section where
-	Section { sid=x } == Section { sid=y } = if x == y then True else False
-
-data Locomotive = Locomotive { slot :: Int
-							 , speed :: Int
-							 , ide :: Int
-							 , direction :: Direction
-							 } | Noloco deriving (Eq)
+	Section { sid=x } == Section { sid=y } = x == y
 
 instance Show Section where
 	show s@(Section{prev=[], next=[n]}) = stateshow s ++ "Next zone is " ++ show n ++ "."
@@ -53,8 +51,16 @@ instance Show Section where
 stateshow :: Section -> String
 stateshow s = "Section " ++ show (sid s) ++ " is " ++ show (state s) ++ ", containing " ++ show (loco s) ++ ". Speedlimit " ++ show (speedlim s) ++ ". " 
 
-instance Show Direction where
-	show d = if d==FWD then "Forward" else "Backward"
+data Locomotive = Locomotive { slot :: Int
+							 , speed :: Int
+							 , ide :: Int
+							 , direction :: Direction
+							 } | Noloco
+
+instance Eq Locomotive where
+	Noloco == Noloco = True
+	Locomotive { slot=x } == Locomotive { slot = y } = x == y
+	_ == _ = False
 
 instance Show Locomotive where
 	show Noloco = "No locomotive"

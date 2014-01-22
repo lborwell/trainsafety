@@ -11,8 +11,11 @@ import Data.List (nub, nubBy)
 -- Two locos merging on a turnout  (currently both stop)
 -- Investigate emitting instructions as they are found
 
-process :: [String] -> Layout -> [TrackInstruction]
-process i t = makeSafe (handleInput i t)
+process :: [String] -> Layout -> (Layout,[TrackInstruction])
+--process i t = makeSafe (handleInput i t)
+process i t = (nt, makeSafe nt)
+	where
+		nt = handleInput i t
 
 handleInput :: [String] -> Layout -> Layout
 handleInput inp@("A0":as) t = speedChange t (parseSpeed inp)
@@ -20,6 +23,17 @@ handleInput inp@("sensor":as) t = sectionSensorTrigger t (parseSensor inp)
 
 makeSafe :: Layout -> [TrackInstruction]
 makeSafe t = undefined
+
+
+-------------------------------------------------
+---
+---      Top-Level Position Check
+---
+-------------------------------------------------
+
+checkPositions :: Layout -> [TrackInstruction]
+checkPositions t = nub $ (checkAdjacent t x) ++ (checkParallel t x)
+	where x = findProximity t
 
 
 -------------------------------------------------
@@ -34,10 +48,12 @@ checkParallel t (s:ss) | areSectionsParallel t s = handleParallel t s ++ checkPa
 					   | otherwise = checkParallel t ss
 
 areSectionsParallel :: Layout -> (SensorID,SensorID) -> Bool
-areSectionsParallel t (a,b) = any (True == ) (map (\x -> checkNext t s2 (t Map.! x)) (prev s1)) || any (True == ) (map (\x -> checkPrev t s2 (t Map.! x)) (next s1))
+--areSectionsParallel t (a,b) = any (True == ) (map (\x -> checkNext t s2 (t Map.! x)) (prev s1)) || any (True == ) (map (\x -> checkPrev t s2 (t Map.! x)) (next s1))
+areSectionsParallel t (a,b) = test checkNext (prev s1) || test checkPrev (next s1)
 	where
 		s1 = t Map.! a
 		s2 = t Map.! b
+		test f l = any (True ==) (map (\x -> f t s2 (t Map.! x)) l)
 
 checkNext :: Layout -> Section -> Section -> Bool
 checkNext t a b = any (True ==) $ map (\x -> a == (t Map.! x)) (next b)
@@ -91,9 +107,9 @@ handleAdjacent t (a,b) | (direction (loco s1)) == (direction (loco s2)) = follow
 
 following :: Section -> Section -> [TrackInstruction]
 following a@(Section { loco=(Locomotive { direction=FWD }) }) b | (sid b) `elem` (next a) = matchSpeed a b --a is following b
-																  | otherwise = matchSpeed b a
+																| otherwise = matchSpeed b a
 following a@(Section { loco=(Locomotive { direction=BKW }) }) b | (sid b) `elem` (prev a) = matchSpeed a b --a is following b
-																  | otherwise = matchSpeed b a
+																| otherwise = matchSpeed b a
 
 matchSpeed :: Section -> Section -> [TrackInstruction]
 matchSpeed a b | (speed la) > (speed lb) = [setLocoSpeed la (speed lb)]
@@ -103,7 +119,13 @@ matchSpeed a b | (speed la) > (speed lb) = [setLocoSpeed la (speed lb)]
 		lb = loco b
 
 headOn :: Section -> Section -> [TrackInstruction]
-headOn a b = stopLoco (loco a) : [stopLoco (loco b)]
+headOn a@(Section { loco=(Locomotive { direction=FWD })}) b | (sid a) `elem` (prev b) = stopLoco (loco a) : [stopLoco (loco b)]
+															| otherwise = []
+headOn a@(Section { loco=(Locomotive { direction=BKW })}) b | (sid a) `elem` (next b) = stopLoco (loco a) : [stopLoco (loco b)]
+															| otherwise = []
+
+--headOn :: Section -> Section -> [TrackInstruction]
+--headOn a b = stopLoco (loco a) : [stopLoco (loco b)]
 
 
 -------------------------------------------------
@@ -172,7 +194,9 @@ speedChange t m = Map.insert (sid sec) (sec { loco=((loco sec) { speed=(newspeed
 	where sec = findLoco t (fromslot m)
 
 findLoco :: Layout -> Int -> Section
-findLoco t s = head (Map.elems (Map.filter (\x -> (slot (loco x)) == s) t))
+findLoco t s = head (Map.elems (Map.filter (\x -> (slot (loco x)) == s) notempty))
+	where
+		notempty = Map.filter (\x -> (loco x) /= Noloco) t
 
 
 -------------------------------------------------
@@ -244,7 +268,7 @@ clearSection t s = Map.insert (sid s) (s {state=Empty, loco=Noloco}) t
 
 -------------------------------------------------
 ---
----      Loco Control Message Generators
+---      Loco Control
 ---
 -------------------------------------------------
 
