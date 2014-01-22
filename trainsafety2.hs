@@ -42,20 +42,13 @@ containsLoco :: Section -> Bool
 containsLoco s = (loco s) /= Noloco
 
 checkFollowing :: Layout -> Section -> [TrackInstruction]
-checkFollowing t s = checkNextSection s (findNextSection t s (direction (loco s)))
+checkFollowing t s = checkNextSection t s (findNextSection t s (direction (loco s)))
 
-checkNextSection :: Section -> Section -> [TrackInstruction]
-checkNextSection s1 s2 | not (containsLoco s2) = []
-					   | direction (loco s1) /= direction (loco s2) = []
+checkNextSection :: Layout -> Section -> Section -> [TrackInstruction]
+checkNextSection t s1 s2 | not (containsLoco s2) = []
+					   | direction (loco s1) /= direction (loco s2) = (stopLoco (loco s1)) : checkSpeed t (show (slot (loco s2)))
 					   | otherwise = checkFollowingSpeeds (loco s1) (loco s2)
 
-findNextSection :: Layout -> Section -> Direction -> Section
-findNextSection t s@(Section { nextturn=Noturn }) FWD = t Map.! (head (next s))
-findNextSection t s@(Section { prevturn=Noturn }) BKW = t Map.! (head (prev s))
-findNextSection t s@(Section { nextturn=Unset }) FWD = t Map.! (head (next s))
-findNextSection t s@(Section { prevturn=Unset }) BKW = t Map.! (head (next s))
-findNextSection t s@(Section { nextturn=Set }) FWD = t Map.! (head (tail (next s)))
-findNextSection t s@(Section { prevturn=Set }) BKW = t Map.! (head (tail (next s)))
 
 -------------------------------------------------
 ---
@@ -68,3 +61,11 @@ stopLoco l = "0 " ++ show (slot l) ++ " 0"
 
 setLocoSpeed :: Locomotive -> Int -> TrackInstruction
 setLocoSpeed l i = "0 " ++ show (slot l) ++ " " ++ show i
+
+findNextSection :: Layout -> Section -> Direction -> Section
+findNextSection t s@(Section { nextturn=Noturn }) FWD = t Map.! (head (next s))
+findNextSection t s@(Section { prevturn=Noturn }) BKW = t Map.! (head (prev s))
+findNextSection t s@(Section { nextturn=Unset }) FWD = t Map.! (head (next s))
+findNextSection t s@(Section { prevturn=Unset }) BKW = t Map.! (head (next s))
+findNextSection t s@(Section { nextturn=Set }) FWD = t Map.! (head (tail (next s)))
+findNextSection t s@(Section { prevturn=Set }) BKW = t Map.! (head (tail (next s)))
