@@ -12,7 +12,7 @@ instance Show Direction where
 data TurnoutState = Set | Unset | Noturn deriving (Show, Eq)
 data State = Justleft | Justentered | Empty | Occupied deriving (Show, Eq)
 data SensorUpdate = Hi | Low deriving (Show, Eq)
-data MessageType = Speed | Direction | Sensor deriving (Show, Eq)
+data MessageType = Speed | Direction | Sensor | Turnout deriving (Show, Eq)
 
 data SpeedMessage = SpeedMessage { fromslot :: Int
 								 , newspeed :: Int
