@@ -23,13 +23,13 @@ testDict = Map.fromList testTrack
 
 
 testLoco :: Locomotive
-testLoco = Locomotive { slot=8, speed=115, ide=2, direction=FWD }
+testLoco = Locomotive { slot=8, speed=115, ide=2, direction=FWD, waiting=True, prevspeed=50 }
 
 testLoco2 :: Locomotive
-testLoco2 = Locomotive { slot=9, speed=113, ide=2, direction=FWD }
+testLoco2 = Locomotive { slot=9, speed=113, ide=2, direction=FWD, waiting=False, prevspeed=0 }
 
 testLoco3 :: Locomotive
-testLoco3 = Locomotive { slot=10, speed=114, ide=2, direction=FWD }
+testLoco3 = Locomotive { slot=10, speed=114, ide=2, direction=FWD, waiting=False, prevspeed=0 }
 
 a1 :: Section
 a1 = Section { state=Occupied, prev=["D1"], next=["B1"], speedlim=113, loco=testLoco3, sid="A1", prevturn=Noturn, nextturn=Noturn }

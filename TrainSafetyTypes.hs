@@ -55,6 +55,8 @@ data Locomotive = Locomotive { slot :: Int
 							 , speed :: Int
 							 , ide :: Int
 							 , direction :: Direction
+							 , waiting :: Bool
+							 , prevspeed :: Int
 							 } | Noloco
 
 instance Eq Locomotive where
@@ -64,4 +66,8 @@ instance Eq Locomotive where
 
 instance Show Locomotive where
 	show Noloco = "No locomotive"
-	show l = "Loco " ++ show (slot l) ++ " going " ++ show (direction l) ++ " at " ++ show (speed l) ++ " (id " ++ show (ide l) ++ ")"
+	show l@(Locomotive { waiting=True, prevspeed=x }) = (locoshow l) ++ ". This loco is waiting to go " ++ show x ++ "."
+	show l = locoshow l
+
+locoshow :: Locomotive -> String
+locoshow l = "Loco " ++ show (slot l) ++ " going " ++ show (direction l) ++ " at " ++ show (speed l) ++ " (id " ++ show (ide l) ++ ")"
