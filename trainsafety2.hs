@@ -4,8 +4,6 @@ import TrainSafetyTypes
 import qualified Data.Map as Map
 import Data.List (nub, nubBy)
 
-
-
 makeSafe :: Layout -> MessageType -> String -> ([TrackInstruction], Layout)
 makeSafe t Speed m = (checkSpeed t m, t)
 makeSafe t Direction m = undefined
@@ -14,6 +12,36 @@ makeSafe t Sensor m = checkSensor t m
 
 checkSensor :: Layout -> String -> ([TrackInstruction], Layout)
 checkSensor t s = checkWaitingLocos t
+
+checkMerging :: Layout -> Section -> ([TrackInstruction],Layout)
+checkMerging t s@(Section { loco=(Locomotive { direction=d }) }) | sec == s = ([],t)
+																 | otherwise = pauseLoco t (slower s sec)
+	where sec = findMerging t s d
+
+findMerging :: Layout -> Section -> Direction -> Section
+findMerging t s d | onMerge t s d = findParallel t s d
+				  | otherwise = s
+
+onMerge :: Layout -> Section -> Direction -> Bool
+onMerge t s FWD = length (prev (findNextSection t s FWD)) > 1
+onMerge t s BKW = length (next (findNextSection t s BKW)) > 1
+
+findParallel :: Layout -> Section -> Direction -> Section
+findParallel t s FWD = (t Map.! (head (filter ((sid s) /=) (prev n))))
+	where n = findNextSection t s FWD
+findParallel t s BKW = (t Map.! (head (filter ((sid s) /=) (next p))))
+	where p = findNextSection t s BKW
+
+-- findParallel t s FWD (t Map.! n)
+
+slower :: Section -> Section -> Section
+slower a b | speed (loco a) > speed (loco b) = b
+		   | otherwise = a
+
+--findParallel :: Layout -> Section -> Direction -> Section -> Section
+--findParallel t s FWD s2 | containsLoco parallelsection = parallelsection
+						-- | otherwise = s
+	--where parallelsection = (t Map.! (head (filter ((sid s) /=) (prev s2))))
 
 checkWaitingLocos :: Layout -> ([TrackInstruction], Layout)
 checkWaitingLocos t = examinePaused t (listWaitingLocos t)
