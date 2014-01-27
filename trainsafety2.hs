@@ -4,14 +4,18 @@ import TrainSafetyTypes
 import qualified Data.Map as Map
 import Data.List (nub, nubBy)
 
-makeSafe :: Layout -> MessageType -> String -> ([TrackInstruction], Layout)
+makeSafe :: Layout -> MessageType -> [String] -> ([TrackInstruction], Layout)
 makeSafe t Speed m = (checkSpeed t m, t)
 makeSafe t Direction m = undefined
 makeSafe t Sensor m = checkSensor t m
 
 
-checkSensor :: Layout -> String -> ([TrackInstruction], Layout)
+checkSensor :: Layout -> [String] -> ([TrackInstruction], Layout)
 checkSensor t s = checkWaitingLocos t
+
+locoCheckNextSection :: Layout -> Section -> ([TrackInstruction], Layout)
+locoCheckNextSection t s | containsLoco (findNextSection t s (direction (loco s))) = pauseLoco t s
+						 | otherwise = ([],t)
 
 checkMerging :: Layout -> Section -> ([TrackInstruction],Layout)
 checkMerging t s@(Section { loco=(Locomotive { direction=d }) }) | sec == s = ([],t)
@@ -72,7 +76,7 @@ checkAdjacent t s = checkFollowing t s
 ---
 -------------------------------------------------
 
-checkSpeed :: Layout -> String -> [TrackInstruction]
+checkSpeed :: Layout -> [String] -> [TrackInstruction]
 checkSpeed t s = (checkSpeedLimit sec) ++ (checkFollowing t sec)
 	where
 		sec = findLoco t (read s)
@@ -143,3 +147,93 @@ findLoco :: Layout -> Int -> Section
 findLoco t s = head (Map.elems (Map.filter (\x -> (slot (loco x)) == s) notempty))
 	where
 		notempty = Map.filter (containsLoco) t
+
+
+
+
+-------------------------------------------------
+--
+--       Incoming Speed Message
+--
+-------------------------------------------------
+
+parseSpeed :: [String] -> SpeedMessage
+parseSpeed inp = SpeedMessage { fromslot=x, newspeed=y }
+	where (_:x:y:_) = readinp (makeHex inp)
+
+readinp :: [String] -> [Int]
+readinp r = map read r
+
+makeHex :: [String] -> [String]
+makeHex st = map (\x -> "0x" ++ x) st
+
+speedChange :: Layout -> SpeedMessage -> Layout
+speedChange t m = Map.insert (sid sec) (sec { loco=((loco sec) { speed=(newspeed m) }) }) t
+	where sec = findLoco t (fromslot m)
+
+
+-------------------------------------------------
+--
+--       Incoming Direction Change Message
+--
+-------------------------------------------------
+
+changeDirection :: Layout -> DirectionMessage -> Layout
+changeDirection t m = Map.insert (sid sec) (sec { loco=((loco sec) { direction=(newdir m) })}) t
+	where sec = findLoco t (dirslot m)
+
+
+-------------------------------------------------
+--
+--       Incoming Section Boundary Message
+--
+-------------------------------------------------
+-- On sensor trigger:
+-- If sensor goes high, check prev/next sections for Justleft
+-- If justleft, take its locomotive, set this to occupied, neighbour to empty
+-- If none left, set this to justentered
+-- Opposite for sensor goes low
+
+parseSensor :: [String] -> SensorMessage
+parseSensor inp = SensorMessage { upd=up a, updid=b }
+	where
+		(_:a:b:_) = inp
+		up x = if x == "hi" then Hi else Low
+
+sectionSensorTrigger :: Layout -> SensorMessage -> Layout
+sectionSensorTrigger track msg = checkNeighbours track (track Map.! (updid msg)) (upd msg)
+
+--sectionSensorTrigger :: Layout -> SensorUpdate -> SensorID -> Layout
+--sectionSensorTrigger track change sensor = checkNeighbours track (track Map.! sensor) change
+--respondToSensor track change sensor = Map.insert sensor (checkNeighbours (track Map.! sensor) change) track
+
+checkNeighbours :: Layout -> Section -> SensorUpdate -> Layout
+checkNeighbours t s u | u == Hi = checkNextEntered t s
+					  | u == Low = checkNextExited t s
+
+checkNextEntered :: Layout -> Section -> Layout
+checkNextEntered t s@(Section { next=[] })  = checkPrevEntered t (t Map.! (sid s))
+checkNextEntered t s@(Section { next=(n:ns) }) | state (t Map.! n) == Justleft = moveLoco t (t Map.! n) (t Map.! (sid s))
+											   | otherwise = checkNextEntered t (s { next=ns })
+
+checkPrevEntered :: Layout -> Section -> Layout
+checkPrevEntered t s@(Section { prev=[] }) = Map.insert (sid s) ((t Map.! (sid s)) { state=Justentered }) t
+checkPrevEntered t s@(Section { prev=(n:ns) }) | state (t Map.! n) == Justleft = moveLoco t (t Map.! n) (t Map.! (sid s))
+											   | otherwise = checkPrevEntered t (s { prev=ns })
+
+
+checkNextExited :: Layout -> Section -> Layout
+checkNextExited t s@(Section { next=[] })  = checkPrevExited t s
+checkNextExited t s@(Section { next=(n:ns) }) | state (t Map.! n) == Justentered = moveLoco t (t Map.! (sid s)) (t Map.! n)
+											  | otherwise = checkNextExited t (s { next=ns })
+
+checkPrevExited :: Layout -> Section -> Layout
+checkPrevExited t s@(Section { prev=[] }) = Map.insert (sid s) ((t Map.! (sid s)) { state=Justleft }) t
+checkPrevExited t s@(Section { prev=(n:ns) }) | state (t Map.! n) == Justentered = moveLoco t (t Map.! (sid s)) (t Map.! n)
+											  | otherwise = checkPrevExited t (s { prev=ns })
+
+moveLoco :: Layout -> Section -> Section -> Layout
+moveLoco t from to = clearSection (Map.insert (sid to) (to {state=Occupied,loco=(loco from)}) t) from
+
+clearSection :: Layout -> Section -> Layout
+clearSection t s = Map.insert (sid s) (s {state=Empty, loco=Noloco}) t
