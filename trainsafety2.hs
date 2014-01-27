@@ -49,12 +49,19 @@ checkWaitingLocos t = examinePaused t (listWaitingLocos t)
 
 examinePaused :: Layout -> [Section] -> ([TrackInstruction], Layout)
 examinePaused t [] = ([],t)
-examinePaused t (s:ss) | not (containsLoco (findNextSection t s (direction l))) = (a ++ x, y)
+examinePaused t (s:ss) | onMerge t s (direction (loco s)) = (u ++ n, m) --checkUnpauseMerge t s
+					   | not (containsLoco (findNextSection t s (direction l))) = (a ++ x, y)
 					   | otherwise = examinePaused t ss
 	where
 		l = loco s
 		(x,y) = examinePaused b ss
 		(a,b) = unpauseLoco t s
+		(n,m) = examinePaused i ss
+		(u,i) = checkUnpauseMerge t s
+
+checkUnpauseMerge :: Layout -> Section -> ([TrackInstruction], Layout)
+checkUnpauseMerge t s | containsLoco (findParallel t s (direction (loco s))) = ([],t)
+					  | otherwise = unpauseLoco t s
 
 checkAdjacent :: Layout -> Section -> [TrackInstruction]
 checkAdjacent t s = checkFollowing t s
