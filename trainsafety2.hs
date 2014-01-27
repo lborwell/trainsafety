@@ -19,7 +19,7 @@ checkMerging t s@(Section { loco=(Locomotive { direction=d }) }) | sec == s = ([
 	where sec = findMerging t s d
 
 findMerging :: Layout -> Section -> Direction -> Section
-findMerging t s d | onMerge t s d = findParallel t s d
+findMerging t s d | onMerge t s d = checkDirection s (findParallel t s d)
 				  | otherwise = s
 
 onMerge :: Layout -> Section -> Direction -> Bool
@@ -32,16 +32,17 @@ findParallel t s FWD = (t Map.! (head (filter ((sid s) /=) (prev n))))
 findParallel t s BKW = (t Map.! (head (filter ((sid s) /=) (next p))))
 	where p = findNextSection t s BKW
 
--- findParallel t s FWD (t Map.! n)
+checkDirection :: Section -> Section -> Section
+checkDirection s s2 | direction l == direction l2 = s2
+					| otherwise = s
+	where
+		l = loco s
+		l2 = loco s2
 
 slower :: Section -> Section -> Section
 slower a b | speed (loco a) > speed (loco b) = b
 		   | otherwise = a
 
---findParallel :: Layout -> Section -> Direction -> Section -> Section
---findParallel t s FWD s2 | containsLoco parallelsection = parallelsection
-						-- | otherwise = s
-	--where parallelsection = (t Map.! (head (filter ((sid s) /=) (prev s2))))
 
 checkWaitingLocos :: Layout -> ([TrackInstruction], Layout)
 checkWaitingLocos t = examinePaused t (listWaitingLocos t)
