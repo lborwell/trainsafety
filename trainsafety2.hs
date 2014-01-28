@@ -1,3 +1,5 @@
+module TrainSafety where
+
 import Testtracks
 
 import TrainSafetyTypes
