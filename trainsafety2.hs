@@ -5,11 +5,17 @@ import qualified Data.Map as Map
 import Data.List (nub, nubBy)
 
 process :: Layout -> String -> ([TrackInstruction],Layout)
-process t s = makeSafe t (checkMessage (words s))
+process t s = makeSafe (updateLayout t msg) msg
+	where msg = checkMessage (words s)
+
+updateLayout :: Layout -> (MessageType, Message) -> Layout
+updateLayout t (Speed,m) = speedChange t m
+updateLayout t (Direction,m) = changeDirection t m
+updateLayout t (Sensor,m) = sectionSensorTrigger t m
 
 makeSafe :: Layout -> (MessageType, Message) -> ([TrackInstruction], Layout)
 makeSafe t (Speed, m) = (checkSpeed t m, t)
-makeSafe t (Direction, m) = undefined
+makeSafe t (Direction, m) = makeSafe t (Sensor, (SensorMessage { upd=Hi, updid=(sid (findLoco t (dirslot m)))}))
 makeSafe t (Sensor, m) = checkSensor t m
 
 checkMessage :: [String] -> (MessageType, Message)
@@ -17,21 +23,32 @@ checkMessage a@("speed":_) = (Speed, parseSpeed a)
 checkMessage a@("dir":_) = (Direction, parseDirection a)
 checkMessage a@("sensor":_) = (Sensor, parseSensor a)
 
-parseDirection :: [String] -> Message
-parseDirection (_:a:b:_) = DirectionMessage { dirslot=(read a), newdir=(parsedir b) }
-	where parsedir x = if x=="fwd" then FWD else BKW
+
 
 checkSensor :: Layout -> Message -> ([TrackInstruction], Layout)
-checkSensor t s = checkWaitingLocos t
+checkSensor t s = (g++a++c++e, f)
+	where
+		(a,b) = checkWaitingLocos t
+		(c,d) = checkMerging b (b Map.! (updid s))
+		(e,f) = locoCheckNextSection d (d Map.! (updid s))
+		g = sensorSpeedCheck t (t Map.! (updid s))
+
+sensorSpeedCheck :: Layout -> Section -> [TrackInstruction]
+sensorSpeedCheck t s | l == Noloco = []
+				     | otherwise = checkSpeed t (SpeedMessage { fromslot=(slot l), newspeed=(speed l)})
+	where l = loco s
+
 
 locoCheckNextSection :: Layout -> Section -> ([TrackInstruction], Layout)
-locoCheckNextSection t s | containsLoco (findNextSection t s (direction (loco s))) = pauseLoco t s
+locoCheckNextSection t s | not (containsLoco s) = ([],t)
+						 | containsLoco (findNextSection t s (direction (loco s))) = pauseLoco t s
 						 | otherwise = ([],t)
 
 checkMerging :: Layout -> Section -> ([TrackInstruction],Layout)
 checkMerging t s@(Section { loco=(Locomotive { direction=d }) }) | sec == s = ([],t)
 																 | otherwise = pauseLoco t (slower s sec)
 	where sec = findMerging t s d
+checkMerging t s@(Section { loco=Noloco }) = ([], t)
 
 findMerging :: Layout -> Section -> Direction -> Section
 findMerging t s d | onMerge t s d = checkDirection s (findParallel t s d)
@@ -48,7 +65,8 @@ findParallel t s BKW = (t Map.! (head (filter ((sid s) /=) (next p))))
 	where p = findNextSection t s BKW
 
 checkDirection :: Section -> Section -> Section
-checkDirection s s2 | direction l == direction l2 = s2
+checkDirection s s2 | not (containsLoco s2) = s
+					| direction l == direction l2 = s2
 					| otherwise = s
 	where
 		l = loco s
@@ -181,6 +199,10 @@ speedChange t m = Map.insert (sid sec) (sec { loco=((loco sec) { speed=(newspeed
 --       Incoming Direction Change Message
 --
 -------------------------------------------------
+
+parseDirection :: [String] -> Message
+parseDirection (_:a:b:_) = DirectionMessage { dirslot=(read a), newdir=(parsedir b) }
+	where parsedir x = if x=="fwd" then FWD else BKW
 
 changeDirection :: Layout -> Message -> Layout
 changeDirection t m = Map.insert (sid sec) (sec { loco=((loco sec) { direction=(newdir m) })}) t
