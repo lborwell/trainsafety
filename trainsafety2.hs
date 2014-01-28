@@ -4,13 +4,24 @@ import TrainSafetyTypes
 import qualified Data.Map as Map
 import Data.List (nub, nubBy)
 
-makeSafe :: Layout -> MessageType -> [String] -> ([TrackInstruction], Layout)
-makeSafe t Speed m = (checkSpeed t m, t)
-makeSafe t Direction m = undefined
-makeSafe t Sensor m = checkSensor t m
+process :: Layout -> String -> ([TrackInstruction],Layout)
+process t s = makeSafe t (checkMessage (words s))
 
+makeSafe :: Layout -> (MessageType, Message) -> ([TrackInstruction], Layout)
+makeSafe t (Speed, m) = (checkSpeed t m, t)
+makeSafe t (Direction, m) = undefined
+makeSafe t (Sensor, m) = checkSensor t m
 
-checkSensor :: Layout -> [String] -> ([TrackInstruction], Layout)
+checkMessage :: [String] -> (MessageType, Message)
+checkMessage a@("speed":_) = (Speed, parseSpeed a)
+checkMessage a@("dir":_) = (Direction, parseDirection a)
+checkMessage a@("sensor":_) = (Sensor, parseSensor a)
+
+parseDirection :: [String] -> Message
+parseDirection (_:a:b:_) = DirectionMessage { dirslot=(read a), newdir=(parsedir b) }
+	where parsedir x = if x=="fwd" then FWD else BKW
+
+checkSensor :: Layout -> Message -> ([TrackInstruction], Layout)
 checkSensor t s = checkWaitingLocos t
 
 locoCheckNextSection :: Layout -> Section -> ([TrackInstruction], Layout)
@@ -76,10 +87,10 @@ checkAdjacent t s = checkFollowing t s
 ---
 -------------------------------------------------
 
-checkSpeed :: Layout -> [String] -> [TrackInstruction]
+checkSpeed :: Layout -> Message -> [TrackInstruction]
 checkSpeed t s = (checkSpeedLimit sec) ++ (checkFollowing t sec)
 	where
-		sec = findLoco t (read s)
+		sec = findLoco t (fromslot s)
 
 checkSpeedLimit :: Section -> [TrackInstruction]
 checkSpeedLimit s | speed l > speedlim s = [setLocoSpeed l (speedlim s)]
@@ -157,17 +168,10 @@ findLoco t s = head (Map.elems (Map.filter (\x -> (slot (loco x)) == s) notempty
 --
 -------------------------------------------------
 
-parseSpeed :: [String] -> SpeedMessage
-parseSpeed inp = SpeedMessage { fromslot=x, newspeed=y }
-	where (_:x:y:_) = readinp (makeHex inp)
+parseSpeed :: [String] -> Message
+parseSpeed (_:a:b:_) = SpeedMessage { fromslot=(read a), newspeed=(read b) }
 
-readinp :: [String] -> [Int]
-readinp r = map read r
-
-makeHex :: [String] -> [String]
-makeHex st = map (\x -> "0x" ++ x) st
-
-speedChange :: Layout -> SpeedMessage -> Layout
+speedChange :: Layout -> Message -> Layout
 speedChange t m = Map.insert (sid sec) (sec { loco=((loco sec) { speed=(newspeed m) }) }) t
 	where sec = findLoco t (fromslot m)
 
@@ -178,7 +182,7 @@ speedChange t m = Map.insert (sid sec) (sec { loco=((loco sec) { speed=(newspeed
 --
 -------------------------------------------------
 
-changeDirection :: Layout -> DirectionMessage -> Layout
+changeDirection :: Layout -> Message -> Layout
 changeDirection t m = Map.insert (sid sec) (sec { loco=((loco sec) { direction=(newdir m) })}) t
 	where sec = findLoco t (dirslot m)
 
@@ -194,13 +198,13 @@ changeDirection t m = Map.insert (sid sec) (sec { loco=((loco sec) { direction=(
 -- If none left, set this to justentered
 -- Opposite for sensor goes low
 
-parseSensor :: [String] -> SensorMessage
+parseSensor :: [String] -> Message
 parseSensor inp = SensorMessage { upd=up a, updid=b }
 	where
 		(_:a:b:_) = inp
 		up x = if x == "hi" then Hi else Low
 
-sectionSensorTrigger :: Layout -> SensorMessage -> Layout
+sectionSensorTrigger :: Layout -> Message -> Layout
 sectionSensorTrigger track msg = checkNeighbours track (track Map.! (updid msg)) (upd msg)
 
 --sectionSensorTrigger :: Layout -> SensorUpdate -> SensorID -> Layout

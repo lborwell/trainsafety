@@ -14,17 +14,15 @@ data State = Justleft | Justentered | Empty | Occupied deriving (Show, Eq)
 data SensorUpdate = Hi | Low deriving (Show, Eq)
 data MessageType = Speed | Direction | Sensor | Turnout deriving (Show, Eq)
 
-data SpeedMessage = SpeedMessage { fromslot :: Int
-								 , newspeed :: Int
-								 } deriving (Show)
-
-data DirectionMessage = DirectionMessage { dirslot :: Int
-										 , newdir :: Direction 
-										 } deriving (Show, Eq)
-
-data SensorMessage = SensorMessage { upd :: SensorUpdate
-								   , updid :: SensorID
-								   } deriving (Show, Eq)
+data Message = SpeedMessage { fromslot :: Int
+							, newspeed :: Int
+							} |
+			   DirectionMessage { dirslot :: Int
+								, newdir :: Direction 
+								} |
+			   SensorMessage { upd :: SensorUpdate
+							 , updid :: SensorID
+							 } deriving (Show, Eq)
 
 data Section = Section { state :: State
 					   , prev :: [SensorID]
