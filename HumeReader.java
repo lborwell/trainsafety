@@ -10,11 +10,13 @@ public class HumeReader{
 
     public HumeReader(){
         try{
-            Socket conn;
-            conn = new Socket("localhost",55555);
-            (new Thread(new Sendah(conn))).start();
-            conn = new Socket("localhost",55555);
-            (new Thread(new Receivah(conn))).start();
+            ServerSocket conn = new ServerSocket(55555);
+            Socket in = conn.accept();
+            (new Thread(new Receivah(in))).start();
+            System.out.println("Receiver connected");
+            Socket out = conn.accept();
+            (new Thread(new Sendah(out))).start();
+            System.out.println("Sender connected");
         }catch(Exception e){ e.printStackTrace(); }
     }
     

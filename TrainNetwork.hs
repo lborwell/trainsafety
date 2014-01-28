@@ -14,8 +14,8 @@ data SyslogHandle =
 
 main :: IO ()
 main = do
-  rec <- opensock "localhost" "55555"
-  send <- opensock "localhost" "55556"
+  send <- opensock "localhost" "55555" WriteMode
+  rec <- opensock "localhost" "55555" ReadMode
   putStrLn "runnin"
   doit trackDict rec send
 
@@ -24,16 +24,23 @@ doit t rec send = do
   msg <- hGetLine rec
   let (out,newtrack) = TS.process t msg
   sendmessages out send
-  putStrLn "dummy"
+  putStrLn $ (show newtrack) ++ "\n"
+  doit newtrack rec send
 
 sendmessages :: [String] -> Handle -> IO ()
 sendmessages m h = do
-  mapM_ (hPutStrLn h) m
+  mapM_ (sendmsg h) m
+
+sendmsg :: Handle -> String -> IO ()
+sendmsg h s = do
+  hPutStrLn h s
+  hFlush h
 
 opensock :: HostName             -- ^ Remote hostname, or localhost
         -> String               -- ^ Port number or name; 514 is default
+        -> IOMode
         -> IO Handle      -- ^ Handle to use for logging
-opensock hostname port =
+opensock hostname port mode =
     withSocketsDo $ do  -- Look up the hostname and port.  Either raises an exception
        -- or returns a nonempty list.  First element in that list
        -- is supposed to be the best option.
@@ -51,12 +58,12 @@ opensock hostname port =
        connect sock (addrAddress serveraddr)
 
        -- Make a Handle out of it for convenience
-       h <- socketToHandle sock WriteMode
+       h <- socketToHandle sock mode
 
        -- We're going to set buffering to BlockBuffering and then
        -- explicitly call hFlush after each message, below, so that
        -- messages get logged immediately
-       hSetBuffering h (BlockBuffering Nothing)
+       hSetBuffering h LineBuffering
        
        -- Save off the socket, program name, and server address in a handle
        return h

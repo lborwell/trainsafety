@@ -26,19 +26,22 @@ public class TestServer {
             while(true){
                 try{
                     Socket inSock = serverSocket.accept();
+                    Socket outSock = serverSocket.accept();
                     System.out.println("Connected");
                     
-                    (new Thread(new TestListener(inSock))).start();
+                    (new Thread(new TestListener(inSock, outSock))).start();
                 }catch(Exception e){ e.printStackTrace(); }
             }
         }
 
         class TestListener implements Runnable{
-            Socket sock;
+            Socket in;
+            Socket out;
             BufferedReader bf;
 
-            public TestListener(Socket s){
-                sock = s;
+            public TestListener(Socket in, Socket out){
+                this.in = in;
+                this.out = out;
                 try{
                     bf = new BufferedReader(new InputStreamReader(sock.getInputStream()));
                 }catch(Exception e){ e.printStackTrace(); }
