@@ -3,6 +3,7 @@ package jmri.jmrix.loconet.locomon;
 import java.io.PrintWriter;
 import java.net.Socket;
 import java.util.Date;
+import java.util.HashMap;
 import jmri.jmrix.loconet.LnTrafficController;
 import jmri.jmrix.loconet.LnTrafficListener;
 import static jmri.jmrix.loconet.LnTrafficListener.LN_TRAFFIC_ALL;
@@ -19,9 +20,12 @@ public class HumeSender implements LnTrafficListener, LocoNetListener{
     LocoNetSystemConnectionMemo m;
     Socket outSock;
     PrintWriter pw;
+    
+    HashMap<String,String> sensors;
 
     Pattern speedp;
     Pattern sensorp;
+    Pattern dirp;
     
     /*
     A1: LS1953
@@ -47,12 +51,27 @@ public class HumeSender implements LnTrafficListener, LocoNetListener{
     Received:
     Received: Sensor 1953 () is Lo.  (BDL16 #123, DS1; DS54/64 #245, AuxA/A1)
     Received:
+    
+    
+    Set loco in slot 9 direction to REV, F0=Off, F1=On,  F2=Off, F3=Off, F4=Off.
+    Set loco in slot 9 direction to FWD, F0=Off, F1=On,  F2=Off, F3=Off, F4=Off.
     */
     
     
     public HumeSender(LocoNetSystemConnectionMemo m, Socket s){
-        speedp = Pattern.compile("Set speed of loco in slot (\d+) to (\d+)(.*)");
-        sensorp =  = Pattern.compile("Sensor (\d+) () is (Hi|Lo)(.*)");
+        speedp = Pattern.compile(".*Set speed of loco in slot (\\d+) to (\\d+).*");
+        sensorp = Pattern.compile(".*Sensor (\\d+) \\(\\) is (Hi|Lo).*");
+        dirp = Pattern.compile(".*Set loco in slot (\\d+) direction to (FWD|REV).*");
+        
+        sensors = new HashMap<String,String>();
+        sensors.put("1953", "A1");
+        sensors.put("1954", "A2");
+        sensors.put("1957", "B1");
+        sensors.put("1958", "B2");
+        sensors.put("1961", "C1");
+        sensors.put("1962", "C2");
+        sensors.put("1965", "D1");
+        sensors.put("1966", "D2");
 
         this.m = m;
         m.getLnTrafficController().addTrafficListener(LN_TRAFFIC_ALL, this);
@@ -83,15 +102,22 @@ public class HumeSender implements LnTrafficListener, LocoNetListener{
     }
 
     private void sendMsg(String m){
+        m = m.trim();
+        
         try{
-            Matcher m = speedp.matcher(m);
-            if(m.matches()){
-                pw.println("speed " + m.group(1) + " " + m.group(2));
+            Matcher match = speedp.matcher(m);
+            if(match.matches()){
+                pw.println("speed " + match.group(1) + " " + match.group(2));
                 return;
             }
-            m = sensorp.matcher(m);
-            if(m.matches()){
-                pw.println("sensor " + m.group(2) + " " + m.group(1));
+            match = sensorp.matcher(m);
+            if(match.matches()){
+                pw.println("sensor " + match.group(2) + " " + sensors.get(match.group(1)));
+                return;
+            }
+            match = dirp.matcher(m);
+            if(match.matches()){
+                pw.println("dir " + match.group(1) + " " + (match.group(2).equals("FWD")? "fwd" : "bkw"));
                 return;
             }
         }catch (Exception e){ e.printStackTrace(); }

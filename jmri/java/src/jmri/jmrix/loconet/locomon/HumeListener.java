@@ -70,7 +70,6 @@ public class HumeListener implements Runnable{
                     //train
                     int c = s.nextInt();
                     Locomotive l = locos.get(addrFromSlot(c));
-                    System.out.println(addrFromSlot(c));
                     LocoNetThrottle t = l.getThrottle();
                     t.setSpeedSetting(t.floatSpeed(s.nextInt()));
                 }else if(i==1){
@@ -88,9 +87,7 @@ public class HumeListener implements Runnable{
     }
     
     int addrFromSlot(int i){
-        
         int x = sm.slot(i).locoAddr();
-        System.out.println("Checking slot " + i + ", result " + x);
         return x;
     }
 }
