@@ -11,11 +11,39 @@ import jmri.jmrix.loconet.LocoNetMessage;
 import jmri.jmrix.loconet.LocoNetSystemConnectionMemo;
 
 public class HumeSender implements LnTrafficListener, LocoNetListener{
+    int i=0;
     LnTrafficController ct;
     jmri.jmrix.loconet.locomon.Llnmon llnmon = new jmri.jmrix.loconet.locomon.Llnmon();
     LocoNetSystemConnectionMemo m;
     Socket outSock;
     PrintWriter pw;
+    
+    /*
+    A1: LS1953
+    A2: LS1954
+    B1: LS1957
+    B2: LS1958
+    C1: LS1961
+    C2: LA1962
+    D1: LS1965
+    D2: LS1966
+    
+    Received: Set speed of loco in slot 9 to 113.
+    Received:
+    Received: Set speed of loco in slot 9 to 113.
+    Received:
+    Received: Transponder address 2 (short) present at 1959 () (BDL16x Board 123 RX4
+    zone D).
+    Received:
+    Received: Sensor 1965 () is Hi.  (BDL16 #123, DS13; DS54/64 #246, AuxC/A3)
+    Received:
+    Received: Transponder address 2 (short) absent at 1953 () (BDL16x Board 123 RX4
+    zone A).
+    Received:
+    Received: Sensor 1953 () is Lo.  (BDL16 #123, DS1; DS54/64 #245, AuxA/A1)
+    Received:
+    */
+    
     
     public HumeSender(LocoNetSystemConnectionMemo m, Socket s){
         this.m = m;

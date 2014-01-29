@@ -41,8 +41,8 @@ public class HumeListener implements Runnable{
             RosterEntry re = roster.getEntry(i);
             int addr = Integer.parseInt(re.getDccAddress());
             //int addr = re.getDccLocoAddress();
-            Locomotive l = new Locomotive(m,addr);
-            locos.put(Integer.valueOf(l.addr), l);
+            Locomotive l = new Locomotive(m,addr,this);
+            locos.put(Integer.valueOf(addr), l);
             sm.slotFromLocoAddress(addr, l);
         }
         printRoster();
@@ -51,7 +51,7 @@ public class HumeListener implements Runnable{
     void printRoster(){
         for(int k : locos.keySet())
             System.out.println("Key: " + k);
-        Locomotive l = locos.get(2);
+        //Locomotive l = locos.get(2);
     }
     
     @Override
@@ -68,12 +68,14 @@ public class HumeListener implements Runnable{
                 int i = s.nextInt();
                 if(i == 0){
                     //train
-                    Locomotive l = locos.get(Integer.valueOf(s.nextInt()));
+                    int c = s.nextInt();
+                    Locomotive l = locos.get(addrFromSlot(c));
+                    System.out.println(addrFromSlot(c));
                     LocoNetThrottle t = l.getThrottle();
                     t.setSpeedSetting(t.floatSpeed(s.nextInt()));
                 }else if(i==1){
                     //reverse train
-                    Locomotive l = locos.get(Integer.valueOf(s.nextInt()));
+                    Locomotive l = locos.get(addrFromSlot(Integer.valueOf(s.nextInt())));
                     LocoNetThrottle t = l.getThrottle();
                     t.setIsForward(!t.getIsForward());
                 }else if(i==2){
@@ -83,5 +85,12 @@ public class HumeListener implements Runnable{
             System.out.println("Received: " + rec);
             rec = null;
         }
+    }
+    
+    int addrFromSlot(int i){
+        
+        int x = sm.slot(i).locoAddr();
+        System.out.println("Checking slot " + i + ", result " + x);
+        return x;
     }
 }
