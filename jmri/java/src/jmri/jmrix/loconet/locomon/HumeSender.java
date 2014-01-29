@@ -10,13 +10,18 @@ import jmri.jmrix.loconet.LocoNetListener;
 import jmri.jmrix.loconet.LocoNetMessage;
 import jmri.jmrix.loconet.LocoNetSystemConnectionMemo;
 
+import java.util.regex.Pattern;
+import java.util.regex.Matcher;
+
 public class HumeSender implements LnTrafficListener, LocoNetListener{
-    int i=0;
     LnTrafficController ct;
     jmri.jmrix.loconet.locomon.Llnmon llnmon = new jmri.jmrix.loconet.locomon.Llnmon();
     LocoNetSystemConnectionMemo m;
     Socket outSock;
     PrintWriter pw;
+
+    Pattern speedp;
+    Pattern sensorp;
     
     /*
     A1: LS1953
@@ -46,6 +51,9 @@ public class HumeSender implements LnTrafficListener, LocoNetListener{
     
     
     public HumeSender(LocoNetSystemConnectionMemo m, Socket s){
+        speedp = Pattern.compile("Set speed of loco in slot (\d+) to (\d+)(.*)");
+        sensorp =  = Pattern.compile("Sensor (\d+) () is (Hi|Lo)(.*)");
+
         this.m = m;
         m.getLnTrafficController().addTrafficListener(LN_TRAFFIC_ALL, this);
         m.getLnTrafficController().addLocoNetListener(~0, this);
@@ -69,7 +77,23 @@ public class HumeSender implements LnTrafficListener, LocoNetListener{
     public void message(LocoNetMessage msg) {
         try{
             String m = llnmon.format(msg);
-            pw.println(m);
+            sendMsg(m);
+            //pw.println(m);
         }catch(Exception e){ e.printStackTrace(); }
+    }
+
+    private void sendMsg(String m){
+        try{
+            Matcher m = speedp.matcher(m);
+            if(m.matches()){
+                pw.println("speed " + m.group(1) + " " + m.group(2));
+                return;
+            }
+            m = sensorp.matcher(m);
+            if(m.matches()){
+                pw.println("sensor " + m.group(2) + " " + m.group(1));
+                return;
+            }
+        }catch (Exception e){ e.printStackTrace(); }
     }
 }

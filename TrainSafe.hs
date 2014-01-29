@@ -226,7 +226,7 @@ parseSensor :: [String] -> Message
 parseSensor inp = SensorMessage { upd=up a, updid=b }
 	where
 		(_:a:b:_) = inp
-		up x = if x == "hi" then Hi else Low
+		up x = if x == "Hi" then Hi else Low
 
 sectionSensorTrigger :: Layout -> Message -> Layout
 sectionSensorTrigger track msg = checkNeighbours track (track Map.! (updid msg)) (upd msg)
