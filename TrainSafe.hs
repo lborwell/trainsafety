@@ -31,14 +31,33 @@ checkSensor :: Layout -> Message -> ([TrackInstruction], Layout)
 checkSensor t s = (g++a++c++e, f)
 	where
 		(a,b) = checkWaitingLocos t
-		(c,d) = checkMerging b (b Map.! (updid s))
-		(e,f) = locoCheckNextSection d (d Map.! (updid s))
-		g = sensorSpeedCheck t (t Map.! (updid s))
+		(c,d) = checkMerging b (sec b)
+		(e,f) = locoCheckNextSection d (sec d)
+		g = sensorSpeedCheck t (sec t)
+		sec m = locoFromSensorMessage m s
 
 sensorSpeedCheck :: Layout -> Section -> [TrackInstruction]
 sensorSpeedCheck t s | l == Noloco = []
 				     | otherwise = checkSpeed t (SpeedMessage { fromslot=(slot l), newspeed=(speed l)})
 	where l = loco s
+
+locoFromSensorMessage :: Layout -> Message -> Section
+locoFromSensorMessage t (SensorMessage {upd=Hi,updid=sd}) | state (t Map.! sd) == Occupied = (t Map.! sd)
+														  | otherwise = findAdjacentLoco t (t Map.! sd) Hi
+locoFromSensorMessage t (SensorMessage {upd=Low,updid=sd}) | state (t Map.! sd) == Justleft = (t Map.! sd)
+														  | otherwise = findAdjacentLoco t (t Map.! sd) Low
+
+findAdjacentLoco :: Layout -> Section -> SensorUpdate -> Section
+findAdjacentLoco t s Hi | containsLoco nexts && direction (loco nexts) == BKW = nexts
+						| containsLoco prevs && direction (loco prevs) == FWD = prevs
+	where
+		nexts = findNextSection t s FWD
+		prevs = findNextSection t s BKW
+findAdjacentLoco t s Low | containsLoco nexts && direction (loco nexts) == FWD = nexts
+						 | containsLoco prevs && direction (loco prevs) == BKW = prevs
+	where
+		nexts = findNextSection t s FWD
+		prevs = findNextSection t s BKW
 
 
 locoCheckNextSection :: Layout -> Section -> ([TrackInstruction], Layout)

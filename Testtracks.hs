@@ -26,7 +26,7 @@ testLoco :: Locomotive
 testLoco = Locomotive { slot=9, speed=115, ide=2, direction=FWD, waiting=False, prevspeed=0 }
 
 testLoco2 :: Locomotive
-testLoco2 = Locomotive { slot=9, speed=116, ide=2, direction=FWD, waiting=False, prevspeed=50 }
+testLoco2 = Locomotive { slot=8, speed=116, ide=2, direction=FWD, waiting=False, prevspeed=0 }
 
 testLoco3 :: Locomotive
 testLoco3 = Locomotive { slot=10, speed=114, ide=2, direction=FWD, waiting=False, prevspeed=0 }
