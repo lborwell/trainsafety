@@ -42,10 +42,11 @@ sensorSpeedCheck t s | l == Noloco = []
 	where l = loco s
 
 locoFromSensorMessage :: Layout -> Message -> Section
-locoFromSensorMessage t (SensorMessage {upd=Hi,updid=sd}) | state (t Map.! sd) == Occupied = (t Map.! sd)
-														  | otherwise = findAdjacentLoco t (t Map.! sd) Hi
-locoFromSensorMessage t (SensorMessage {upd=Low,updid=sd}) | state (t Map.! sd) == Justleft = (t Map.! sd)
-														  | otherwise = findAdjacentLoco t (t Map.! sd) Low
+locoFromSensorMessage t m = t Map.! (updid m)
+--locoFromSensorMessage t (SensorMessage {upd=Hi,updid=sd}) | state (t Map.! sd) == Occupied = (t Map.! sd)
+--														  | otherwise = findAdjacentLoco t (t Map.! sd) Hi
+--locoFromSensorMessage t (SensorMessage {upd=Low,updid=sd}) | state (t Map.! sd) == Justleft = (t Map.! sd)
+--														  | otherwise = findAdjacentLoco t (t Map.! sd) Low
 
 findAdjacentLoco :: Layout -> Section -> SensorUpdate -> Section
 findAdjacentLoco t s Hi | containsLoco nexts && direction (loco nexts) == BKW = nexts
@@ -176,9 +177,9 @@ findNextSection :: Layout -> Section -> Direction -> Section
 findNextSection t s@(Section { nextturn=Noturn }) FWD = t Map.! (head (next s))
 findNextSection t s@(Section { prevturn=Noturn }) BKW = t Map.! (head (prev s))
 findNextSection t s@(Section { nextturn=Unset }) FWD = t Map.! (head (next s))
-findNextSection t s@(Section { prevturn=Unset }) BKW = t Map.! (head (next s))
+findNextSection t s@(Section { prevturn=Unset }) BKW = t Map.! (head (prev s))
 findNextSection t s@(Section { nextturn=Set }) FWD = t Map.! (head (tail (next s)))
-findNextSection t s@(Section { prevturn=Set }) BKW = t Map.! (head (tail (next s)))
+findNextSection t s@(Section { prevturn=Set }) BKW = t Map.! (head (tail (prev s)))
 
 nextNextSection :: Layout -> Section -> Direction -> Section
 nextNextSection t s d = findNextSection t (findNextSection t s d) d
