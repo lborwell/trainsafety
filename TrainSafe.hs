@@ -42,11 +42,10 @@ sensorSpeedCheck t s | l == Noloco = []
 	where l = loco s
 
 locoFromSensorMessage :: Layout -> Message -> Section
-locoFromSensorMessage t m = t Map.! (updid m)
---locoFromSensorMessage t (SensorMessage {upd=Hi,updid=sd}) | state (t Map.! sd) == Occupied = (t Map.! sd)
---														  | otherwise = findAdjacentLoco t (t Map.! sd) Hi
---locoFromSensorMessage t (SensorMessage {upd=Low,updid=sd}) | state (t Map.! sd) == Justleft = (t Map.! sd)
---														  | otherwise = findAdjacentLoco t (t Map.! sd) Low
+locoFromSensorMessage t (SensorMessage {upd=Hi,updid=sd}) | state (t Map.! sd) == Occupied = (t Map.! sd)
+														  | otherwise = findAdjacentLoco t (t Map.! sd) Hi
+locoFromSensorMessage t (SensorMessage {upd=Low,updid=sd}) | state (t Map.! sd) == Justleft = (t Map.! sd)
+														  | otherwise = findAdjacentLoco t (t Map.! sd) Low
 
 findAdjacentLoco :: Layout -> Section -> SensorUpdate -> Section
 findAdjacentLoco t s Hi | containsLoco nexts && direction (loco nexts) == BKW = nexts
