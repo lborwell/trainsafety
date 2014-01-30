@@ -2,15 +2,11 @@ import Data.Bits
 import Network.Socket
 import Network.BSD
 import Data.List
-import SyslogTypes
 import System.IO
 import TrainSafetyTypes
 import Testtracks
 import qualified TrainSafe as TS
 
-data SyslogHandle = 
-    SyslogHandle {slHandle :: Handle,
-                  slProgram :: String}
 
 main :: IO ()
 main = do
@@ -68,22 +64,3 @@ opensock hostname port mode =
        -- Save off the socket, program name, and server address in a handle
        return h
 
-syslog :: SyslogHandle -> Facility -> Priority -> String -> IO ()
-syslog syslogh fac pri msg =
-    do hPutStrLn (slHandle syslogh) sendmsg
-       -- Make sure that we send data immediately
-       hFlush (slHandle syslogh)
-    where code = makeCode fac pri
-          sendmsg = "<" ++ show code ++ ">" ++ (slProgram syslogh) ++
-                    ": " ++ msg
-
-closelog :: SyslogHandle -> IO ()
-closelog syslogh = hClose (slHandle syslogh)
-
-{- | Convert a facility and a priority into a syslog code -}
-makeCode :: Facility -> Priority -> Int
-makeCode fac pri =
-    let faccode = codeOfFac fac
-        pricode = fromEnum pri 
-        in
-          (faccode `shiftL` 3) .|. pricode
