@@ -47,6 +47,8 @@ locoFromSensorMessage t (SensorMessage {upd=Hi,updid=sd}) | state (t Map.! sd) =
 locoFromSensorMessage t (SensorMessage {upd=Low,updid=sd}) | state (t Map.! sd) == Justleft = (t Map.! sd)
 														  | otherwise = findAdjacentLoco t (t Map.! sd) Low
 
+
+-- Find loco that caused sensor update
 findAdjacentLoco :: Layout -> Section -> SensorUpdate -> Section
 findAdjacentLoco t s Hi | containsLoco nexts && direction (loco nexts) == BKW = nexts
 						| containsLoco prevs && direction (loco prevs) == FWD = prevs
@@ -114,8 +116,11 @@ examinePaused t (s:ss) | onMerge t s (direction (loco s)) = (u ++ n, m) --checkU
 		(u,i) = checkUnpauseMerge t s
 
 checkUnpauseMerge :: Layout -> Section -> ([TrackInstruction], Layout)
-checkUnpauseMerge t s | containsLoco (findParallel t s (direction (loco s))) = ([],t)
+checkUnpauseMerge t s | containsLoco (findParallel t s (direction l)) = ([],t)
+					  | containsLoco (findNextSection t s (direction l)) = ([],t)
 					  | otherwise = unpauseLoco t s
+	where
+		l = loco s
 
 checkAdjacent :: Layout -> Section -> [TrackInstruction]
 checkAdjacent t s = checkFollowing t s
