@@ -89,6 +89,7 @@ public class HumeListener implements Runnable{
     LocoNetThrottle getThrottle(Locomotive l){
         try{
             LocoNetThrottle t = l.getThrottle();
+            if(t==null) return getThrottle(l);
             return t;
         }catch(Exception e){ return getThrottle(l); }
     }
