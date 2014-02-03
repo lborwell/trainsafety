@@ -38,13 +38,17 @@ instance Eq Section where
 	Section { sid=x } == Section { sid=y } = x == y
 
 instance Show Section where
-	show s@(Section{prev=[], next=[n]}) = stateshow s ++ "Next zone is " ++ show n ++ "."
-	show s@(Section{prev=[p], next=[]}) = stateshow s ++ "Next zone is " ++ show p ++ "."
-	show s@(Section{prev=[p], next=[n]}) = stateshow s ++ "Previous zone is " ++ show p ++ ". Next zone is " ++ show n ++ "."
-	show s@(Section{prev=[p,p2], next=[n]}) = stateshow s ++ "Previous zones are " ++ p ++ ", " ++ p2 ++ 
-		". Turnout is " ++ show (prevturn s) ++ ". Next zone is " ++ n ++ "."
-	show s@(Section{prev=[p], next=[n,n2]}) = stateshow s ++ "Previous zone is " ++ p ++ 
-		". Next zones are " ++ n ++ ", " ++ n2 ++ ". Turnout is " ++ show (nextturn s)
+	show s@(Section{loco=l}) | l /= Noloco = sid s ++ ": " ++ show (state s) ++ " " ++ show (slot l)
+							 | otherwise = sid s ++ ": " ++ show (state s)
+
+--instance Show Section where
+--	show s@(Section{prev=[], next=[n]}) = stateshow s ++ "Next zone is " ++ show n ++ "."
+--	show s@(Section{prev=[p], next=[]}) = stateshow s ++ "Next zone is " ++ show p ++ "."
+--	show s@(Section{prev=[p], next=[n]}) = stateshow s ++ "Previous zone is " ++ show p ++ ". Next zone is " ++ show n ++ "."
+--	show s@(Section{prev=[p,p2], next=[n]}) = stateshow s ++ "Previous zones are " ++ p ++ ", " ++ p2 ++ 
+--		". Turnout is " ++ show (prevturn s) ++ ". Next zone is " ++ n ++ "."
+--	show s@(Section{prev=[p], next=[n,n2]}) = stateshow s ++ "Previous zone is " ++ p ++ 
+--		". Next zones are " ++ n ++ ", " ++ n2 ++ ". Turnout is " ++ show (nextturn s)
 
 stateshow :: Section -> String
 stateshow s = "Section " ++ show (sid s) ++ " is " ++ show (state s) ++ ", containing " ++ show (loco s) ++ ". Speedlimit " ++ show (speedlim s) ++ ". " 
