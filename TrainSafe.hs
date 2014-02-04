@@ -309,3 +309,20 @@ moveLoco t from to = clearSection (Map.insert (sid to) (to {state=Occupied,loco=
 
 clearSection :: Layout -> Section -> Layout
 clearSection t s = Map.insert (sid s) (s {state=Empty, loco=Noloco}) t
+
+
+
+
+
+test :: ([TrackInstruction],Layout) -> [String] -> ([TrackInstruction],Layout)
+test a b = foldl (combne) a b
+
+speedReset :: [String]
+speedReset = ["speed 8 0","speed 9 0"]
+
+doubleTest :: [String]
+doubleTest = ["speed 9 113","speed 8 113","sensor Hi B2","sensor Low A2","speed 8 113","sensor Hi D2","sensor Low C2"]
+
+combne :: ([TrackInstruction],Layout) -> String -> ([TrackInstruction],Layout)
+combne a b = ((fst a) ++ (c) ++ [""], d)
+	where (c,d) = process (snd a) b
