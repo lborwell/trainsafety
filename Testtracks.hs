@@ -26,7 +26,7 @@ testLoco :: Locomotive
 testLoco = Locomotive { slot=9, speed=113, ide=2, direction=FWD, waiting=False, prevspeed=0 }
 
 testLoco2 :: Locomotive
-testLoco2 = Locomotive { slot=8, speed=113, ide=2, direction=BKW, waiting=False, prevspeed=0 }
+testLoco2 = Locomotive { slot=8, speed=113, ide=2, direction=FWD, waiting=False, prevspeed=0 }
 
 testLoco3 :: Locomotive
 testLoco3 = Locomotive { slot=10, speed=114, ide=2, direction=FWD, waiting=False, prevspeed=0 }
@@ -47,7 +47,7 @@ c1 :: Section
 c1 = Section { state=Empty, prev=["B1","B2"], next=["D1"], speedlim=113, loco=Noloco, sid="C1", prevturn=Unset, nextturn=Noturn }
 
 c2 :: Section
-c2 = Section { state=Empty, prev=["B2"], next=["D2"], speedlim=50, loco=Noloco, sid="C2", prevturn=Noturn, nextturn=Noturn }
+c2 = Section { state=Occupied, prev=["B2"], next=["D2"], speedlim=50, loco=testLoco2, sid="C2", prevturn=Noturn, nextturn=Noturn }
 
 d1 :: Section
 d1 = Section { state=Empty, prev=["C1"], next=["A1","A2"], speedlim=113, loco=Noloco, sid="D1", prevturn=Noturn, nextturn=Unset }

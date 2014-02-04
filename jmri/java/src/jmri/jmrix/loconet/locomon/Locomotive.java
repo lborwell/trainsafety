@@ -30,7 +30,7 @@ public class Locomotive implements SlotListener{
     
     public void notifyChangedSlot(LocoNetSlot s) {
         this.s=s;
-        hl.locos.put(s.getSlot(), this);
+        //hl.locos.put(s.getSlot(), this);
     }
     
     public void setThrottle(LocoNetThrottle t){

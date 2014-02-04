@@ -20,9 +20,15 @@ public class HumeListener implements Runnable{
     Roster roster;
     LocoNetSystemConnectionMemo m;
     Socket inSock;
+    
+    HashMap<Integer,Integer> slottoaddr = new HashMap<Integer,Integer>();
 
     BufferedReader instream;
     public HumeListener(LocoNetSystemConnectionMemo m, Socket s){
+        slottoaddr.put(9,2);
+        slottoaddr.put(8,1);
+        
+        
         inSock = s;
         
         try{
@@ -95,8 +101,10 @@ public class HumeListener implements Runnable{
     }
 
     int addrFromSlot(int i){
-        System.out.println("Addr from slot " + i);
-        int x = sm.slot(i).locoAddr();
-        return x;
+        
+        //int x = sm.slot(i).locoAddr();
+        //System.out.println("Addr from slot " + i + ", returning " + x);
+        //return x;
+        return slottoaddr.get(i);
     }
 }
