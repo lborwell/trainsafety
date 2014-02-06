@@ -20,7 +20,8 @@ makeSafe :: Layout -> (MessageType, Message) -> ([TrackInstruction], Layout)
 makeSafe t (Speed, m) = (checkSpeed t m, t)
 makeSafe t (Direction, m) = makeSafe t (Sensor, (SensorMessage { upd=Hi, updid=(sid (findLoco t (dirslot m)))}))
 makeSafe t (Sensor, m) = checkSensor t m
-makeSafe t (Turnout, m) = makeSafe t (Sensor, (SensorMessage { upd=Hi, updid=(turnid m) }))
+makeSafe t (Turnout, m) | containsLoco (t Map.! (turnid m)) = makeSafe t (Sensor, (SensorMessage { upd=Hi, updid=(turnid m) }))
+						| otherwise = ([],t)
 
 checkMessage :: [String] -> (MessageType, Message)
 checkMessage a@("speed":_) = (Speed, parseSpeed a)
@@ -91,6 +92,7 @@ findParallel t s BKW = (t Map.! (head (filter ((sid s) /=) (next p))))
 
 checkDirection :: Section -> Section -> Section
 checkDirection s s2 | not (containsLoco s2) = s
+					| waiting l2 = s
 					| direction l == direction l2 = s2
 					| otherwise = s
 	where
@@ -127,6 +129,7 @@ checkUnpauseMerge t s | containsLoco (findParallel t s (direction l)) = ([],t)
 checkAdjacent :: Layout -> Section -> [TrackInstruction]
 checkAdjacent t s = checkFollowing t s
 
+
 -------------------------------------------------
 ---
 ---      Speed Checks
@@ -157,6 +160,7 @@ speedCheckNextSection t s1 s2 | not (containsLoco s2) = []
 checkFollowingSpeeds :: Locomotive -> Locomotive -> [TrackInstruction]
 checkFollowingSpeeds a b | speed a > speed b = [setLocoSpeed a (speed b)]
 						 | otherwise = []
+
 
 -------------------------------------------------
 ---
@@ -282,8 +286,23 @@ sectionSensorTrigger track msg = checkNeighbours track (track Map.! (updid msg))
 --respondToSensor track change sensor = Map.insert sensor (checkNeighbours (track Map.! sensor) change) track
 
 checkNeighbours :: Layout -> Section -> SensorUpdate -> Layout
-checkNeighbours t s Hi = checkNextEntered t s
-checkNeighbours t s Low = checkNextExited t s
+checkNeighbours t s Hi | state nxt == Justleft && correctDirection s Hi NXT = moveLoco t nxt s
+					   | state prv == Justleft && correctDirection s Hi PRV = moveLoco t prv s
+					   | otherwise = Map.insert (sid s) ((t Map.! (sid s)) { state=Justentered }) t
+	where
+		nxt = findNextSection t s FWD
+		prv = findNextSection t s BKW
+checkNeighbours t s Low | state nxt == Justentered && correctDirection s Low NXT = moveLoco t s nxt
+						| state prv == Justentered && correctDirection s Low PRV = moveLoco t s prv
+						| otherwise = Map.insert (sid s) ((t Map.! (sid s)) { state=Justleft }) t
+	where
+		nxt = findNextSection t s FWD
+		prv = findNextSection t s BKW
+
+
+--checkNeighbours :: Layout -> Section -> SensorUpdate -> Layout
+--checkNeighbours t s Hi = checkNextEntered t s
+--checkNeighbours t s Low = checkNextExited t s
 
 data D = NXT | PRV
 
@@ -338,7 +357,7 @@ test a b = foldl (combne) a b
 
 speedReset = ["speed 8 0","speed 9 0"]
 doubleTest = ["speed 9 113","speed 8 113","sensor Hi B2","sensor Low A2","speed 8 113","sensor Hi D2","sensor Low C2"]
-switchFlipTest = ["turn B2 fwd set","sensor Hi C1","sensor Low B1","sensor Hi D1","sensor Low C1"]
+switchFlipTest = ["speed 9 90","speed 8 113","turn B2 fwd set","turn C1 bkw set","sensor Hi C1","sensor Low B1","sensor Hi D1","sensor Low C1"]
 
 combne :: ([TrackInstruction],Layout) -> String -> ([TrackInstruction],Layout)
 combne a b = ((fst a) ++ (c) ++ [""], d)

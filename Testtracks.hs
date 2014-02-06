@@ -41,10 +41,10 @@ b1 :: Section
 b1 = Section { state=Occupied, prev=["A1"], next=["C1"], speedlim=113, loco=testLoco, sid="B1", prevturn=Noturn, nextturn=Noturn }
 
 b2 :: Section
-b2 = Section { state=Occupied, prev=["A2"], next=["C2","C1"], speedlim=113, loco=testLoco2, sid="B2", prevturn=Noturn, nextturn=Unset }
+b2 = Section { state=Occupied, prev=["A2"], next=["C2","C1"], speedlim=113, loco=testLoco2, sid="B2", prevturn=Noturn, nextturn=Set }
 
 c1 :: Section
-c1 = Section { state=Empty, prev=["B1","B2"], next=["D1"], speedlim=113, loco=Noloco, sid="C1", prevturn=Unset, nextturn=Noturn }
+c1 = Section { state=Empty, prev=["B1","B2"], next=["D1"], speedlim=113, loco=Noloco, sid="C1", prevturn=Set, nextturn=Noturn }
 
 c2 :: Section
 c2 = Section { state=Empty, prev=["B2"], next=["D2"], speedlim=113, loco=Noloco, sid="C2", prevturn=Noturn, nextturn=Noturn }
