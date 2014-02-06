@@ -22,7 +22,11 @@ data Message = SpeedMessage { fromslot :: Int
 								} |
 			   SensorMessage { upd :: SensorUpdate
 							 , updid :: SensorID
-							 } deriving (Show, Eq)
+							 } |
+			   TurnoutMessage { turnid :: SensorID
+			   				  , side :: Direction
+			   				  , newstate :: TurnoutState
+							  } deriving (Show,Eq)
 
 data Section = Section { state :: State
 					   , prev :: [SensorID]
@@ -40,6 +44,7 @@ instance Eq Section where
 instance Show Section where
 	show s@(Section{loco=l}) | l /= Noloco = sid s ++ ": " ++ show (state s) ++ " " ++ show (slot l)
 							 | otherwise = sid s ++ ": " ++ show (state s)
+
 
 --instance Show Section where
 --	show s@(Section{prev=[], next=[n]}) = stateshow s ++ "Next zone is " ++ show n ++ "."

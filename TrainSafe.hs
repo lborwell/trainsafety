@@ -14,17 +14,19 @@ updateLayout :: Layout -> (MessageType, Message) -> Layout
 updateLayout t (Speed,m) = speedChange t m
 updateLayout t (Direction,m) = changeDirection t m
 updateLayout t (Sensor,m) = sectionSensorTrigger t m
+updateLayout t (Turnout,m) = setTurnout t m
 
 makeSafe :: Layout -> (MessageType, Message) -> ([TrackInstruction], Layout)
 makeSafe t (Speed, m) = (checkSpeed t m, t)
 makeSafe t (Direction, m) = makeSafe t (Sensor, (SensorMessage { upd=Hi, updid=(sid (findLoco t (dirslot m)))}))
 makeSafe t (Sensor, m) = checkSensor t m
+makeSafe t (Turnout, m) = makeSafe t (Sensor, (SensorMessage { upd=Hi, updid=(turnid m) }))
 
 checkMessage :: [String] -> (MessageType, Message)
 checkMessage a@("speed":_) = (Speed, parseSpeed a)
 checkMessage a@("dir":_) = (Direction, parseDirection a)
 checkMessage a@("sensor":_) = (Sensor, parseSensor a)
-
+checkMessage a@("turn":_) = (Turnout, parseTurn a)
 
 
 checkSensor :: Layout -> Message -> ([TrackInstruction], Layout)
@@ -240,6 +242,23 @@ changeDirection t m = Map.insert (sid sec) (sec { loco=((loco sec) { direction=(
 
 -------------------------------------------------
 --
+--       Incoming Direction Change Message
+--
+-------------------------------------------------
+
+parseTurn :: [String] -> Message
+parseTurn (_:a:b:c:_) = TurnoutMessage { turnid=a, side=(end b), newstate=(set c)  }
+	where
+		end x = if x=="fwd" then FWD else BKW
+		set x = if x=="set" then Set else Unset
+
+setTurnout :: Layout -> Message -> Layout
+setTurnout t m | side m == FWD = Map.insert (sid sec) (sec { nextturn=(newstate m) }) t
+			   | side m == BKW = Map.insert (sid sec) (sec { prevturn=(newstate m) }) t
+	where sec = t Map.! (turnid m)
+
+-------------------------------------------------
+--
 --       Incoming Section Boundary Message
 --
 -------------------------------------------------
@@ -317,11 +336,9 @@ clearSection t s = Map.insert (sid s) (s {state=Empty, loco=Noloco}) t
 test :: ([TrackInstruction],Layout) -> [String] -> ([TrackInstruction],Layout)
 test a b = foldl (combne) a b
 
-speedReset :: [String]
 speedReset = ["speed 8 0","speed 9 0"]
-
-doubleTest :: [String]
 doubleTest = ["speed 9 113","speed 8 113","sensor Hi B2","sensor Low A2","speed 8 113","sensor Hi D2","sensor Low C2"]
+switchFlipTest = ["turn B2 fwd set","sensor Hi C1","sensor Low B1","sensor Hi D1","sensor Low C1"]
 
 combne :: ([TrackInstruction],Layout) -> String -> ([TrackInstruction],Layout)
 combne a b = ((fst a) ++ (c) ++ [""], d)
