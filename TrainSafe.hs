@@ -77,7 +77,7 @@ checkMerging t s@(Section { loco=(Locomotive { direction=d }) }) | sec == s = ([
 checkMerging t s@(Section { loco=Noloco }) = ([], t)
 
 findMerging :: Layout -> Section -> Direction -> Section
-findMerging t s d | onMerge t s d = checkLocoDirection s (findParallel t s d)
+findMerging t s d | onMerge t s d = checkLocoDirection t s (findParallel t s d)
 				  | otherwise = s
 
 onMerge :: Layout -> Section -> Direction -> Bool
@@ -90,14 +90,15 @@ findParallel t s FWD = (t Map.! (head (filter ((sid s) /=) (prev n))))
 findParallel t s BKW = (t Map.! (head (filter ((sid s) /=) (next p))))
 	where p = findNextSection t s BKW
 
-checkLocoDirection :: Section -> Section -> Section
-checkLocoDirection s s2 | not (containsLoco s2) = s
-						| waiting l2 = s
-						| direction l == direction l2 = s2
-						| otherwise = s
+checkLocoDirection :: Layout -> Section -> Section -> Section
+checkLocoDirection t s s2 | not (containsLoco s2) = s
+						  | waiting l2 = s
+						  | findNextSection t s (direction l) == findNextSection t s2 (direction l2) = s2
+						  | otherwise = s
 	where
 		l = loco s
 		l2 = loco s2
+
 
 slower :: Section -> Section -> Section
 slower a b | speed (loco a) > speed (loco b) = b
@@ -167,8 +168,9 @@ speedCheckNextSection t s1 s2 | not (containsLoco s2) = []
 		l2 = loco s2
 
 checkFollowingSpeeds :: Locomotive -> Locomotive -> [TrackInstruction]
-checkFollowingSpeeds a b | speed a > speed b = [setLocoSpeed a (speed b)]
-						 | otherwise = []
+--checkFollowingSpeeds a b | speed a > speed b = [setLocoSpeed a (speed b)]
+--						 | otherwise = []
+checkFollowingSpeeds _ _ = []
 
 
 -------------------------------------------------
@@ -340,7 +342,8 @@ test a b = foldl (combne) a b
 
 speedReset = ["speed 8 0","speed 9 0"]
 doubleTest = ["speed 9 113","speed 8 113","sensor Hi B2","sensor Low A2","speed 8 113","sensor Hi D2","sensor Low C2"]
-switchFlipTest = ["speed 9 90","speed 8 113","turn B2 fwd set","turn C1 bkw set","sensor Hi C1","sensor Low B1","sensor Hi D1","sensor Low C1"]
+switchFlipTest = ["speed 9 90","speed 8 113","turn B2 fwd set","speed 9 0","turn C1 bkw set","sensor Hi C1","sensor Low B2","sensor Hi D1","sensor Low C1","speed 9 90"]
+parallelWalk = ["sensor Hi B1","sensor Low A1","sensor Hi B2","sensor Low A2","sensor Hi C1","sensor Low B1","sensor Hi C2","sensor Low B2"]
 
 combne :: ([TrackInstruction],Layout) -> String -> ([TrackInstruction],Layout)
 combne a b = ((fst a) ++ (c) ++ [""], d)
