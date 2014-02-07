@@ -72,12 +72,12 @@ locoCheckNextSection t s | not (containsLoco s) = ([],t)
 
 checkMerging :: Layout -> Section -> ([TrackInstruction],Layout)
 checkMerging t s@(Section { loco=(Locomotive { direction=d }) }) | sec == s = ([],t)
-																 | otherwise = pauseLoco t (slower s sec)
+																 | otherwise = handleMerging t s sec
 	where sec = findMerging t s d
 checkMerging t s@(Section { loco=Noloco }) = ([], t)
 
 findMerging :: Layout -> Section -> Direction -> Section
-findMerging t s d | onMerge t s d = checkDirection s (findParallel t s d)
+findMerging t s d | onMerge t s d = checkLocoDirection s (findParallel t s d)
 				  | otherwise = s
 
 onMerge :: Layout -> Section -> Direction -> Bool
@@ -90,11 +90,11 @@ findParallel t s FWD = (t Map.! (head (filter ((sid s) /=) (prev n))))
 findParallel t s BKW = (t Map.! (head (filter ((sid s) /=) (next p))))
 	where p = findNextSection t s BKW
 
-checkDirection :: Section -> Section -> Section
-checkDirection s s2 | not (containsLoco s2) = s
-					| waiting l2 = s
-					| direction l == direction l2 = s2
-					| otherwise = s
+checkLocoDirection :: Section -> Section -> Section
+checkLocoDirection s s2 | not (containsLoco s2) = s
+						| waiting l2 = s
+						| direction l == direction l2 = s2
+						| otherwise = s
 	where
 		l = loco s
 		l2 = loco s2
@@ -103,6 +103,15 @@ slower :: Section -> Section -> Section
 slower a b | speed (loco a) > speed (loco b) = b
 		   | otherwise = a
 
+handleMerging :: Layout -> Section -> Section -> ([TrackInstruction],Layout)
+handleMerging t s s2 | slower s s2 == s = (a ++ [pointSwitchAt (findNextSection t s (direction (loco s))) s2],b)
+					 | otherwise = (c ++ [pointSwitchAt (findNextSection t s2 (direction (loco s2))) s],d)
+	where
+		(a,b) = pauseLoco t s
+		(c,d) = pauseLoco t s2
+
+pointSwitchAt :: Section -> Section -> TrackInstruction
+pointSwitchAt from to = setSwitchTo from (sid to) (direction (loco to))
 
 checkWaitingLocos :: Layout -> ([TrackInstruction], Layout)
 checkWaitingLocos t = examinePaused t (listWaitingLocos t)
@@ -167,6 +176,12 @@ checkFollowingSpeeds a b | speed a > speed b = [setLocoSpeed a (speed b)]
 ---      Util Functions
 ---
 -------------------------------------------------
+
+setSwitchTo :: Section -> SensorID -> Direction -> TrackInstruction
+setSwitchTo switch dest FWD | dest == head (prev switch) = "2 " ++ (sid switch) ++ " bkw unset"
+							| otherwise = "2 " ++ (sid switch) ++ " bkw set"
+setSwitchTo switch dest BKW | dest == head (next switch) = "2 " ++ (sid switch) ++ " fwd unset"
+							| otherwise = "2 " ++ (sid switch) ++ " fwd set"
 
 pauseLoco :: Layout -> Section -> ([TrackInstruction], Layout)
 pauseLoco t s = ([stopLoco l], Map.insert (sid s) (upd s) t)
@@ -281,10 +296,6 @@ parseSensor inp = SensorMessage { upd=up a, updid=b }
 sectionSensorTrigger :: Layout -> Message -> Layout
 sectionSensorTrigger track msg = checkNeighbours track (track Map.! (updid msg)) (upd msg)
 
---sectionSensorTrigger :: Layout -> SensorUpdate -> SensorID -> Layout
---sectionSensorTrigger track change sensor = checkNeighbours track (track Map.! sensor) change
---respondToSensor track change sensor = Map.insert sensor (checkNeighbours (track Map.! sensor) change) track
-
 checkNeighbours :: Layout -> Section -> SensorUpdate -> Layout
 checkNeighbours t s Hi | state nxt == Justleft && correctDirection s Hi NXT = moveLoco t nxt s
 					   | state prv == Justleft && correctDirection s Hi PRV = moveLoco t prv s
@@ -299,25 +310,7 @@ checkNeighbours t s Low | state nxt == Justentered && correctDirection s Low NXT
 		nxt = findNextSection t s FWD
 		prv = findNextSection t s BKW
 
-
---checkNeighbours :: Layout -> Section -> SensorUpdate -> Layout
---checkNeighbours t s Hi = checkNextEntered t s
---checkNeighbours t s Low = checkNextExited t s
-
 data D = NXT | PRV
-
-checkNextEntered :: Layout -> Section -> Layout
-checkNextEntered t s@(Section { next=[] })  = checkPrevEntered t (t Map.! (sid s))
-checkNextEntered t s@(Section { next=(n:ns) }) | state nexts == Justleft && correctDirection nexts Hi NXT = moveLoco t nexts (t Map.! (sid s))
-											   | otherwise = checkNextEntered t (s { next=ns })
-	where nexts = t Map.! n
-
-checkPrevEntered :: Layout -> Section -> Layout
-checkPrevEntered t s@(Section { prev=[] }) = Map.insert (sid s) ((t Map.! (sid s)) { state=Justentered }) t
-checkPrevEntered t s@(Section { prev=(n:ns) }) | state prevs == Justleft && correctDirection prevs Hi PRV = moveLoco t prevs (t Map.! (sid s))
-											   | otherwise = checkPrevEntered t (s { prev=ns })
-	where prevs = t Map.! n
-
 
 correctDirection :: Section -> SensorUpdate -> D -> Bool
 correctDirection ns _ _ | loco ns == Noloco = True
@@ -330,23 +323,13 @@ correctDirection ns Low NXT | direction (loco ns) == FWD = True
 correctDirection ns Low PRV | direction (loco ns) == BKW = True
 							| otherwise = False
 
-checkNextExited :: Layout -> Section -> Layout
-checkNextExited t s@(Section { next=[] })  = checkPrevExited t s
-checkNextExited t s@(Section { next=(n:ns) }) | state nexts == Justentered && correctDirection nexts Low NXT = moveLoco t (t Map.! (sid s)) nexts
-											  | otherwise = checkNextExited t (s { next=ns })
-	where nexts = t Map.! n
-
-checkPrevExited :: Layout -> Section -> Layout
-checkPrevExited t s@(Section { prev=[] }) = Map.insert (sid s) ((t Map.! (sid s)) { state=Justleft }) t
-checkPrevExited t s@(Section { prev=(n:ns) }) | state prevs == Justentered && correctDirection prevs Low PRV = moveLoco t (t Map.! (sid s)) prevs
-											  | otherwise = checkPrevExited t (s { prev=ns })
-	where prevs = t Map.! n
 
 moveLoco :: Layout -> Section -> Section -> Layout
 moveLoco t from to = clearSection (Map.insert (sid to) (to {state=Occupied,loco=(loco from)}) t) from
 
 clearSection :: Layout -> Section -> Layout
 clearSection t s = Map.insert (sid s) (s {state=Empty, loco=Noloco}) t
+
 
 
 
