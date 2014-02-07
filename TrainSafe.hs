@@ -4,7 +4,6 @@ import Testtracks
 
 import TrainSafetyTypes
 import qualified Data.Map as Map
-import Data.List (nub, nubBy)
 
 -- | Given layout and message from LocoNet, return updated
 -- layout and instructions to make layout safe
@@ -152,10 +151,13 @@ examinePaused t (s:ss) | onMerge t s (direction (loco s)) = (u ++ n, m) --checkU
 checkUnpauseMerge :: Layout -> Section -> ([TrackInstruction], Layout)
 checkUnpauseMerge t s | containsLoco (findParallel t s (direction l)) = ([],t)
 					  | containsLoco (findNextSection t s (direction l)) = ([],t)
-					  | otherwise = unpauseLoco t s
+					  | otherwise = unpauseMergingLoco t s
 	where
 		l = loco s
 
+unpauseMergingLoco :: Layout -> Section -> ([TrackInstruction],Layout)
+unpauseMergingLoco t s = (pointSwitchAt (findNextSection t s (direction (loco s))) s : a,b)
+	where (a,b) = unpauseLoco t s
 
 -------------------------------------------------
 ---
