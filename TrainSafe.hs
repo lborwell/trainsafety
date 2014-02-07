@@ -6,16 +6,20 @@ import TrainSafetyTypes
 import qualified Data.Map as Map
 import Data.List (nub, nubBy)
 
+-- | Given layout and message from LocoNet, return updated
+-- layout and instructions to make layout safe
 process :: Layout -> String -> ([TrackInstruction],Layout)
 process t s = makeSafe (updateLayout t msg) msg
 	where msg = checkMessage (words s)
 
+-- | Given layout and message, update layout to state of new message
 updateLayout :: Layout -> (MessageType, Message) -> Layout
 updateLayout t (Speed,m) = speedChange t m
 updateLayout t (Direction,m) = changeDirection t m
 updateLayout t (Sensor,m) = sectionSensorTrigger t m
 updateLayout t (Turnout,m) = setTurnout t m
 
+-- | Examine layout and current LocoNet message to maintain safety
 makeSafe :: Layout -> (MessageType, Message) -> ([TrackInstruction], Layout)
 makeSafe t (Speed, m) = (checkSpeed t m, t)
 makeSafe t (Direction, m) = makeSafe t (Sensor, (SensorMessage { upd=Hi, updid=(sid (findLoco t (dirslot m)))}))
@@ -23,13 +27,14 @@ makeSafe t (Sensor, m) = checkSensor t m
 makeSafe t (Turnout, m) | containsLoco (t Map.! (turnid m)) = makeSafe t (Sensor, (SensorMessage { upd=Hi, updid=(turnid m) }))
 						| otherwise = ([],t)
 
+-- | Parse input message, return in more usable format
 checkMessage :: [String] -> (MessageType, Message)
 checkMessage a@("speed":_) = (Speed, parseSpeed a)
 checkMessage a@("dir":_) = (Direction, parseDirection a)
 checkMessage a@("sensor":_) = (Sensor, parseSensor a)
 checkMessage a@("turn":_) = (Turnout, parseTurn a)
 
-
+-- | Given a sensor input message, ensure safety of layout
 checkSensor :: Layout -> Message -> ([TrackInstruction], Layout)
 checkSensor t s = (g++a++c++e, f)
 	where
@@ -39,11 +44,13 @@ checkSensor t s = (g++a++c++e, f)
 		g = sensorSpeedCheck t (sec t)
 		sec m = locoFromSensorMessage m s
 
+-- | Given sensor message, ensure speed of responsible loco is safe
 sensorSpeedCheck :: Layout -> Section -> [TrackInstruction]
 sensorSpeedCheck t s | l == Noloco = []
 				     | otherwise = checkSpeed t (SpeedMessage { fromslot=(slot l), newspeed=(speed l)})
 	where l = loco s
 
+-- | Given a sensor message, find the location of the responsible loco
 locoFromSensorMessage :: Layout -> Message -> Section
 locoFromSensorMessage t (SensorMessage {upd=Hi,updid=sd}) | state (t Map.! sd) == Occupied = (t Map.! sd)
 														  | otherwise = findAdjacentLoco t (t Map.! sd) Hi
@@ -51,7 +58,8 @@ locoFromSensorMessage t (SensorMessage {upd=Low,updid=sd}) | state (t Map.! sd) 
 														  | otherwise = findAdjacentLoco t (t Map.! sd) Low
 
 
--- Find loco that caused sensor update
+-- | Called by locoFromSensorMessage, finds loco when sensor was triggered in adjacent
+-- section
 findAdjacentLoco :: Layout -> Section -> SensorUpdate -> Section
 findAdjacentLoco t s Hi | containsLoco nexts && direction (loco nexts) == BKW = nexts
 						| containsLoco prevs && direction (loco prevs) == FWD = prevs
@@ -64,32 +72,38 @@ findAdjacentLoco t s Low | containsLoco nexts && direction (loco nexts) == FWD =
 		nexts = findNextSection t s FWD
 		prevs = findNextSection t s BKW
 
-
+-- | Check next section for a loco. Pause if it exists.
 locoCheckNextSection :: Layout -> Section -> ([TrackInstruction], Layout)
 locoCheckNextSection t s | not (containsLoco s) = ([],t)
 						 | containsLoco (findNextSection t s (direction (loco s))) = pauseLoco t s
 						 | otherwise = ([],t)
 
+-- | Check to see if we are merging into the path of another loco
 checkMerging :: Layout -> Section -> ([TrackInstruction],Layout)
 checkMerging t s@(Section { loco=(Locomotive { direction=d }) }) | sec == s = ([],t)
 																 | otherwise = handleMerging t s sec
 	where sec = findMerging t s d
 checkMerging t s@(Section { loco=Noloco }) = ([], t)
 
+-- | Find locomotive we are merging with. If no such loco exists, return
+-- input section. 
 findMerging :: Layout -> Section -> Direction -> Section
 findMerging t s d | onMerge t s d = checkLocoDirection t s (findParallel t s d)
 				  | otherwise = s
 
+-- | Are we heading towards a turnout?
 onMerge :: Layout -> Section -> Direction -> Bool
 onMerge t s FWD = length (prev (findNextSection t s FWD)) > 1
 onMerge t s BKW = length (next (findNextSection t s BKW)) > 1
 
+-- | Find parallel section we are merging "in front" of.
 findParallel :: Layout -> Section -> Direction -> Section
 findParallel t s FWD = (t Map.! (head (filter ((sid s) /=) (prev n))))
 	where n = findNextSection t s FWD
 findParallel t s BKW = (t Map.! (head (filter ((sid s) /=) (next p))))
 	where p = findNextSection t s BKW
 
+-- | Check if we may hit loco in "merging" position
 checkLocoDirection :: Layout -> Section -> Section -> Section
 checkLocoDirection t s s2 | not (containsLoco s2) = s
 						  | waiting l2 = s
@@ -99,11 +113,13 @@ checkLocoDirection t s s2 | not (containsLoco s2) = s
 		l = loco s
 		l2 = loco s2
 
-
+-- | Given two locos, return slower one
 slower :: Section -> Section -> Section
 slower a b | speed (loco a) > speed (loco b) = b
 		   | otherwise = a
 
+-- | When merging locos are found, pause the slower loco and ensure turnout is pointing
+-- at the one that will continue to move
 handleMerging :: Layout -> Section -> Section -> ([TrackInstruction],Layout)
 handleMerging t s s2 | slower s s2 == s = (a ++ [pointSwitchAt (findNextSection t s (direction (loco s))) s2],b)
 					 | otherwise = (c ++ [pointSwitchAt (findNextSection t s2 (direction (loco s2))) s],d)
@@ -111,12 +127,15 @@ handleMerging t s s2 | slower s s2 == s = (a ++ [pointSwitchAt (findNextSection 
 		(a,b) = pauseLoco t s
 		(c,d) = pauseLoco t s2
 
+-- | Set switch in from to point to to
 pointSwitchAt :: Section -> Section -> TrackInstruction
-pointSwitchAt from to = setSwitchTo from (sid to) (direction (loco to))
+pointSwitchAt from to = setSwitchToMerge from (sid to) (direction (loco to))
 
+-- | Check waiting locos to see if it is safe to resume movement
 checkWaitingLocos :: Layout -> ([TrackInstruction], Layout)
 checkWaitingLocos t = examinePaused t (listWaitingLocos t)
 
+-- | see checkWaitingLocos
 examinePaused :: Layout -> [Section] -> ([TrackInstruction], Layout)
 examinePaused t [] = ([],t)
 examinePaused t (s:ss) | onMerge t s (direction (loco s)) = (u ++ n, m) --checkUnpauseMerge t s
@@ -129,15 +148,13 @@ examinePaused t (s:ss) | onMerge t s (direction (loco s)) = (u ++ n, m) --checkU
 		(n,m) = examinePaused i ss
 		(u,i) = checkUnpauseMerge t s
 
+-- | Is it safe to unpause loco from merge?
 checkUnpauseMerge :: Layout -> Section -> ([TrackInstruction], Layout)
 checkUnpauseMerge t s | containsLoco (findParallel t s (direction l)) = ([],t)
 					  | containsLoco (findNextSection t s (direction l)) = ([],t)
 					  | otherwise = unpauseLoco t s
 	where
 		l = loco s
-
-checkAdjacent :: Layout -> Section -> [TrackInstruction]
-checkAdjacent t s = checkFollowing t s
 
 
 -------------------------------------------------
@@ -146,19 +163,21 @@ checkAdjacent t s = checkFollowing t s
 ---
 -------------------------------------------------
 
+-- | Check if locomotive is violating speed constraints
 checkSpeed :: Layout -> Message -> [TrackInstruction]
 checkSpeed t s = (checkSpeedLimit sec) ++ (checkFollowing t sec)
 	where
 		sec = findLoco t (fromslot s)
 
+-- | If the locomotive is exceeding speed limit, slow it to the limit
 checkSpeedLimit :: Section -> [TrackInstruction]
 checkSpeedLimit s | speed l > speedlim s = [setLocoSpeed l (speedlim s)]
 				  | otherwise = []
 	where l = loco s
 
+-- | If the locomotive is following another, ensure it is going slower than the leading train
 checkFollowing :: Layout -> Section -> [TrackInstruction]
---checkFollowing t s = speedCheckNextSection t s (nextNextSection t s (direction (loco s)))
-checkFollowing _ _ = []
+checkFollowing t s = speedCheckNextSection t s (nextNextSection t s (direction (loco s)))
 
 speedCheckNextSection :: Layout -> Section -> Section -> [TrackInstruction]
 speedCheckNextSection t s1 s2 | not (containsLoco s2) = []
@@ -180,30 +199,38 @@ checkFollowingSpeeds _ _ = []
 ---
 -------------------------------------------------
 
-setSwitchTo :: Section -> SensorID -> Direction -> TrackInstruction
-setSwitchTo switch dest FWD | dest == head (prev switch) = "2 " ++ (sid switch) ++ " bkw unset"
+-- | Point switch in section switch to section with ID dest
+-- Direction FWD == change PREV switch, direction BKW == change NEXT switch
+-- (direction represents direction of loco moving towards switch)
+setSwitchToMerge :: Section -> SensorID -> Direction -> TrackInstruction
+setSwitchToMerge switch dest FWD | dest == head (prev switch) = "2 " ++ (sid switch) ++ " bkw unset"
 							| otherwise = "2 " ++ (sid switch) ++ " bkw set"
-setSwitchTo switch dest BKW | dest == head (next switch) = "2 " ++ (sid switch) ++ " fwd unset"
+setSwitchToMerge switch dest BKW | dest == head (next switch) = "2 " ++ (sid switch) ++ " fwd unset"
 							| otherwise = "2 " ++ (sid switch) ++ " fwd set"
 
+-- | Set loco speed to 0, loco state to waiting
 pauseLoco :: Layout -> Section -> ([TrackInstruction], Layout)
 pauseLoco t s = ([stopLoco l], Map.insert (sid s) (upd s) t)
 	where 
 		upd s = s { loco=(l { waiting=True, prevspeed=speed l})}
 		l = loco s
 
+-- | Set loco speed to speed before it was paused, waiting to false
 unpauseLoco :: Layout -> Section -> ([TrackInstruction], Layout)
 unpauseLoco t s = ([setLocoSpeed l (prevspeed l)], Map.insert (sid s) (upd s) t)
 	where
 		upd s = s { loco=(l { waiting=False })}
 		l = loco s
 
+-- | Set locomotive speed to zero
 stopLoco :: Locomotive -> TrackInstruction
-stopLoco l = "0 " ++ show (slot l) ++ " 0"
+stopLoco l = setLocoSpeed l 0
 
+-- | Set locomotive speed to given value
 setLocoSpeed :: Locomotive -> Int -> TrackInstruction
 setLocoSpeed l i = "0 " ++ show (slot l) ++ " " ++ show i
 
+-- | Find the next section in a given direction, noting turnout positions
 findNextSection :: Layout -> Section -> Direction -> Section
 findNextSection t s@(Section { nextturn=Noturn }) FWD = t Map.! (head (next s))
 findNextSection t s@(Section { prevturn=Noturn }) BKW = t Map.! (head (prev s))
@@ -212,19 +239,23 @@ findNextSection t s@(Section { prevturn=Unset }) BKW = t Map.! (head (prev s))
 findNextSection t s@(Section { nextturn=Set }) FWD = t Map.! (head (tail (next s)))
 findNextSection t s@(Section { prevturn=Set }) BKW = t Map.! (head (tail (prev s)))
 
+-- | Find the section two steps ahead
 nextNextSection :: Layout -> Section -> Direction -> Section
 nextNextSection t s d = findNextSection t (findNextSection t s d) d
 
+-- | Does the section contain a loco
 containsLoco :: Section -> Bool
 containsLoco s = (loco s) /= Noloco
 
--- Track -> All sections containing a loco
+-- | Track -> All sections containing a loco
 listLocos :: Layout -> [Section]
 listLocos t = Map.elems (Map.filter (containsLoco) t)
 
+-- | Track -> All sections containing a waiting loco
 listWaitingLocos :: Layout -> [Section]
 listWaitingLocos t = filter (\x -> waiting (loco x)) (listLocos t)
 
+-- | Return section containing loco with given slot number
 findLoco :: Layout -> Int -> Section
 findLoco t s = head (Map.elems (Map.filter (\x -> (slot (loco x)) == s) notempty))
 	where
@@ -239,9 +270,11 @@ findLoco t s = head (Map.elems (Map.filter (\x -> (slot (loco x)) == s) notempty
 --
 -------------------------------------------------
 
+-- | Parse incoming speed message into SpeedMessage
 parseSpeed :: [String] -> Message
 parseSpeed (_:a:b:_) = SpeedMessage { fromslot=(read a), newspeed=(read b) }
 
+-- | Update layout to represent new loco speed
 speedChange :: Layout -> Message -> Layout
 speedChange t m = Map.insert (sid sec) (sec { loco=((loco sec) { speed=(newspeed m) }) }) t
 	where sec = findLoco t (fromslot m)
@@ -253,10 +286,12 @@ speedChange t m = Map.insert (sid sec) (sec { loco=((loco sec) { speed=(newspeed
 --
 -------------------------------------------------
 
+-- | Parse incoming direction message into DirectionMessage
 parseDirection :: [String] -> Message
 parseDirection (_:a:b:_) = DirectionMessage { dirslot=(read a), newdir=(parsedir b) }
 	where parsedir x = if x=="fwd" then FWD else BKW
 
+-- | Update layout to represent new loco direction
 changeDirection :: Layout -> Message -> Layout
 changeDirection t m = Map.insert (sid sec) (sec { loco=((loco sec) { direction=(newdir m) })}) t
 	where sec = findLoco t (dirslot m)
@@ -264,16 +299,18 @@ changeDirection t m = Map.insert (sid sec) (sec { loco=((loco sec) { direction=(
 
 -------------------------------------------------
 --
---       Incoming Direction Change Message
+--       Incoming Turnout Change Message
 --
 -------------------------------------------------
 
+-- | Parse incoming turnout message into TurnoutMessage
 parseTurn :: [String] -> Message
 parseTurn (_:a:b:c:_) = TurnoutMessage { turnid=a, side=(end b), newstate=(set c)  }
 	where
 		end x = if x=="fwd" then FWD else BKW
 		set x = if x=="set" then Set else Unset
 
+-- | Update layout to represent new turnout setting
 setTurnout :: Layout -> Message -> Layout
 setTurnout t m | side m == FWD = Map.insert (sid sec) (sec { nextturn=(newstate m) }) t
 			   | side m == BKW = Map.insert (sid sec) (sec { prevturn=(newstate m) }) t
