@@ -157,7 +157,8 @@ checkSpeedLimit s | speed l > speedlim s = [setLocoSpeed l (speedlim s)]
 	where l = loco s
 
 checkFollowing :: Layout -> Section -> [TrackInstruction]
-checkFollowing t s = speedCheckNextSection t s (nextNextSection t s (direction (loco s)))
+--checkFollowing t s = speedCheckNextSection t s (nextNextSection t s (direction (loco s)))
+checkFollowing _ _ = []
 
 speedCheckNextSection :: Layout -> Section -> Section -> [TrackInstruction]
 speedCheckNextSection t s1 s2 | not (containsLoco s2) = []
