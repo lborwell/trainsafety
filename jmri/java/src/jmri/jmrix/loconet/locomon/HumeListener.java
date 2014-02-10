@@ -22,6 +22,7 @@ public class HumeListener implements Runnable{
     Socket inSock;
     
     HashMap<Integer,Integer> slottoaddr = new HashMap<Integer,Integer>();
+    HashMap<Integer,Route> routes = new HashMap<Integer,Route>();
 
     BufferedReader instream;
     public HumeListener(LocoNetSystemConnectionMemo m, Socket s){
