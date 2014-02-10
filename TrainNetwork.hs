@@ -18,6 +18,7 @@ main = do
 doit :: Layout -> Handle -> Handle -> IO ()
 doit t rec send = do
   msg <- hGetLine rec
+  putStrLn $ "Inc: " ++ msg
   let (out,newtrack) = TS.process t msg
   sendmessages out send
   putStrLn $ (show newtrack) ++ "\n"

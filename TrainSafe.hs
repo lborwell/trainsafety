@@ -385,7 +385,9 @@ speedReset = ["speed 8 0","speed 9 0"]
 doubleTest = ["speed 9 113","speed 8 113","sensor Hi B2","sensor Low A2","speed 8 113","sensor Hi D2","sensor Low C2"]
 switchFlipTest = ["speed 9 90","speed 8 113","turn B2 fwd set","speed 9 0","turn C1 bkw set","sensor Hi C1","sensor Low B2","sensor Hi D1","sensor Low C1","speed 9 90"]
 parallelWalk = ["sensor Hi B1","sensor Low A1","sensor Hi B2","sensor Low A2","sensor Hi C1","sensor Low B1","sensor Hi C2","sensor Low B2"]
+following = ["sensor Hi B1","sensor Low A1","speed 8 113","sensor Hi D1","sensor Low C1"]
+singleMerge = ["speed 9 113","sensor Hi C1","sensor Low B2"]
 
 combne :: ([TrackInstruction],Layout) -> String -> ([TrackInstruction],Layout)
-combne a b = ((fst a) ++ (c) ++ [""], d)
+combne a b = ((fst a) ++ [b ++ ":"] ++ (c) ++ [""], d)
 	where (c,d) = process (snd a) b
