@@ -47,7 +47,7 @@ public class HumeListener implements Runnable{
             RosterEntry re = roster.getEntry(i);
             int addr = Integer.parseInt(re.getDccAddress());
             //int addr = re.getDccLocoAddress();
-            Locomotive l = new Locomotive(m,addr,this);
+            Locomotive l = new Locomotive(m,addr,this,re);
             locos.put(Integer.valueOf(addr), l);
             sm.slotFromLocoAddress(addr, l);
         }
@@ -107,10 +107,6 @@ public class HumeListener implements Runnable{
     }
     
     int addrFromSlot(int i){
-        
-        //int x = sm.slot(i).locoAddr();
-        //System.out.println("Addr from slot " + i + ", returning " + x);
-        //return x;
         return slottoaddr.get(i);
     }
 }

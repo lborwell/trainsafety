@@ -5,7 +5,11 @@
  */
 
 package jmri.jmrix.loconet.locomon;
-
+import jmri.InstanceManager;
+import jmri.DccLocoAddress;
+import jmri.DccThrottle;
+import jmri.ThrottleListener;
+import jmri.jmrit.roster.RosterEntry;
 import jmri.jmrix.loconet.LocoNetSlot;
 import jmri.jmrix.loconet.LocoNetSystemConnectionMemo;
 import jmri.jmrix.loconet.LocoNetThrottle;
@@ -15,17 +19,20 @@ import jmri.jmrix.loconet.SlotListener;
  *
  * @author Luke
  */
-public class Locomotive implements SlotListener{
+public class Locomotive implements SlotListener, ThrottleListener{
+    private boolean throttleRequested = false;
     public HumeListener hl;
     public LocoNetSlot s;
     public LocoNetThrottle t;
     LocoNetSystemConnectionMemo m;
+    RosterEntry re;
     public int addr;
     
-    public Locomotive(LocoNetSystemConnectionMemo m, int addr, HumeListener hl){
+    public Locomotive(LocoNetSystemConnectionMemo m, int addr, HumeListener hl, RosterEntry re){
         this.hl = hl;
         this.m = m;
         this.addr = addr;
+        this.re = re;
     }
     
     public void notifyChangedSlot(LocoNetSlot s) {
@@ -42,16 +49,31 @@ public class Locomotive implements SlotListener{
     }
     
     public LocoNetThrottle getThrottle(){
-        if(s==null)
-            m.getSlotManager().slotFromLocoAddress(addr, this);
-        if(t==null && s != null){
-            t = new LocoNetThrottle(m,s);
-            System.out.println("creating throttle");
+        //if(s==null)
+            //m.getSlotManager().slotFromLocoAddress(addr, this);
+        //if(t==null && s != null){
+            //t = new LocoNetThrottle(m,s);
+            //System.out.println("creating throttle");
+        //}
+        //if(s==null)
+            //System.out.println("s null");
+        if(t==null){
+            if(throttleRequested) return null;
+            boolean b = false;
+            while(!b)
+                b = InstanceManager.throttleManagerInstance().requestThrottle(re, this);
+            throttleRequested = true;                    
         }
-        if(s==null)
-            System.out.println("s null");
-        
         return t;
+    }
+
+    @Override
+    public void notifyThrottleFound(DccThrottle t) {
+        this.t = (LocoNetThrottle) t;
+    }
+
+    @Override
+    public void notifyFailedThrottleRequest(DccLocoAddress address, String reason) {
     }
     
 }

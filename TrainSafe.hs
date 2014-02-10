@@ -20,7 +20,8 @@ updateLayout t (Turnout,m) = setTurnout t m
 
 -- | Examine layout and current LocoNet message to maintain safety
 makeSafe :: Layout -> (MessageType, Message) -> ([TrackInstruction], Layout)
-makeSafe t (Speed, m) = (checkSpeed t m, t)
+--makeSafe t (Speed, m) = (checkSpeed t m, t)
+makeSafe t (Speed, m) = makeSafe t (Sensor, (SensorMessage { upd=Hi, updid=(sid (findLoco t (fromslot m)))}))
 makeSafe t (Direction, m) = makeSafe t (Sensor, (SensorMessage { upd=Hi, updid=(sid (findLoco t (dirslot m)))}))
 makeSafe t (Sensor, m) = checkSensor t m
 makeSafe t (Turnout, m) | containsLoco (t Map.! (turnid m)) = makeSafe t (Sensor, (SensorMessage { upd=Hi, updid=(turnid m) }))
