@@ -22,10 +22,12 @@ public class HumeSender implements LnTrafficListener, LocoNetListener{
     PrintWriter pw;
     
     HashMap<String,String> sensors;
+    HashMap<Integer,HumeTurnout> turns = new HashMap<Integer,HumeTurnout>();
 
     Pattern speedp;
     Pattern sensorp;
     Pattern dirp;
+    Pattern turnp;
     
     /*
     A1: LS1953
@@ -55,13 +57,24 @@ public class HumeSender implements LnTrafficListener, LocoNetListener{
     
     Set loco in slot 9 direction to REV, F0=Off, F1=On,  F2=Off, F3=Off, F4=Off.
     Set loco in slot 9 direction to FWD, F0=Off, F1=On,  F2=Off, F3=Off, F4=Off.
+    
+    
+    Requesting Switch at LT14 () to Closed (output On).
+    Requesting Switch at LT14 () to Closed (output On).
+    Requesting Switch at LT5 () to Thrown (output On).
+    LONG_ACK: Switch request Failed!
+    Requesting Switch at LT6 () to Thrown (output On).
+    Requesting Switch at LT5 () to Thrown (output On).
+    Requesting Switch at LT7 () to Thrown (output On).
+    Requesting Switch at LT8 () to Thrown (output On).
     */
     
     
-    public HumeSender(LocoNetSystemConnectionMemo m, Socket s){
+    public HumeSender(LocoNetSystemConnectionMemo m, Socket s, HumeTurnout[] t){
         speedp = Pattern.compile(".*Set speed of loco in slot (\\d+) to (\\d+).*");
         sensorp = Pattern.compile(".*Sensor (\\d+) \\(\\) is (Hi|Lo).*");
         dirp = Pattern.compile(".*Set loco in slot (\\d+) direction to (FWD|REV).*");
+        turnp = Pattern.compile(".*Requesting Switch at (\\d+) \\(\\) to (Thrown|Closed).*");
         
         sensors = new HashMap<String,String>();
         sensors.put("1953", "A1");
@@ -72,6 +85,9 @@ public class HumeSender implements LnTrafficListener, LocoNetListener{
         sensors.put("1962", "C2");
         sensors.put("1965", "D1");
         sensors.put("1966", "D2");
+        
+        for(HumeTurnout ht : t)
+            turns.put(ht.id, ht);
 
         this.m = m;
         m.getLnTrafficController().addTrafficListener(LN_TRAFFIC_ALL, this);
@@ -119,6 +135,13 @@ public class HumeSender implements LnTrafficListener, LocoNetListener{
             if(match.matches()){
                 pw.println("dir " + match.group(1) + " " + (match.group(2).equals("FWD")? "fwd" : "bkw"));
                 return;
+            }
+            match = turnp.matcher(m);
+            if(match.matches()){
+                HumeTurnout t = turns.get(Integer.parseInt(match.group(1)));
+                if(t==null) return;
+                if(t.sendMsg(match.group(2).equals("Thrown")))
+                    pw.println(t.toString());
             }
         }catch (Exception e){ e.printStackTrace(); }
     }

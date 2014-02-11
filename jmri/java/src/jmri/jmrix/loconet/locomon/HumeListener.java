@@ -22,15 +22,17 @@ public class HumeListener implements Runnable{
     Socket inSock;
     
     HashMap<Integer,Integer> slottoaddr = new HashMap<Integer,Integer>();
-    HashMap<Integer,Route> routes = new HashMap<Integer,Route>();
+    HashMap<String,HumeTurnout> turns = new HashMap<String,HumeTurnout>();
 
     BufferedReader instream;
-    public HumeListener(LocoNetSystemConnectionMemo m, Socket s){
+    public HumeListener(LocoNetSystemConnectionMemo m, Socket s, HumeTurnout[] t){
         slottoaddr.put(9,2);
         slottoaddr.put(8,1);
-        
-        
+ 
         inSock = s;
+        
+        for(HumeTurnout ht : t)
+            turns.put(ht.trackID + " " + ht.dirString(), ht);
         
         try{
             instream = new BufferedReader(new InputStreamReader(inSock.getInputStream()));
@@ -86,6 +88,10 @@ public class HumeListener implements Runnable{
                     t.setIsForward(!t.getIsForward());
                 }else if(i==2){
                     //turnout
+                    HumeTurnout ht = turns.get(s.next() + " " + s.next());
+                    System.out.println("Got turnout " + ht.toString());
+                    System.out.println("Turnout id " + ht.id);
+                    ht.set(HumeTurnout.setToBool(s.next()));
                 }
             }catch(Exception e){ e.printStackTrace(); }
             System.out.println("Received: " + rec);
@@ -94,7 +100,6 @@ public class HumeListener implements Runnable{
     }
     
     LocoNetThrottle getThrottle(Locomotive l){
-        if(l==null) System.out.println("l null");
         LocoNetThrottle t = null;
         while(t==null)
             t = l.getThrottle();
