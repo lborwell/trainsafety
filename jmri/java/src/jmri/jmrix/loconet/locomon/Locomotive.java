@@ -48,7 +48,7 @@ public class Locomotive implements SlotListener, ThrottleListener{
         return "Loco Addr: " + addr;
     }
     
-    public LocoNetThrottle getThrottle(){
+    public synchronized LocoNetThrottle getThrottle(){
         //if(s==null)
             //m.getSlotManager().slotFromLocoAddress(addr, this);
         //if(t==null && s != null){
@@ -60,15 +60,18 @@ public class Locomotive implements SlotListener, ThrottleListener{
         if(t==null){
             if(throttleRequested) return null;
             boolean b = false;
-            while(!b)
+            while(!b){
                 b = InstanceManager.throttleManagerInstance().requestThrottle(re, this);
-            throttleRequested = true;                    
+                System.out.println("Locomotive while(!b)");
+            }
+            throttleRequested = true;
         }
         return t;
     }
 
     @Override
-    public void notifyThrottleFound(DccThrottle t) {
+    public synchronized void notifyThrottleFound(DccThrottle t) {
+        System.out.println("Locomotive notifyfound");
         this.t = (LocoNetThrottle) t;
     }
 

@@ -213,7 +213,8 @@ setSwitchToMerge switch dest BKW | dest == head (next switch) = "2 " ++ (sid swi
 
 -- | Set loco speed to 0, loco state to waiting
 pauseLoco :: Layout -> Section -> ([TrackInstruction], Layout)
-pauseLoco t s = ([stopLoco l], Map.insert (sid s) (upd s) t)
+pauseLoco t s | waiting l = ([],t)
+			  | otherwise = ([stopLoco l], Map.insert (sid s) (upd s) t)
 	where 
 		upd s = s { loco=(l { waiting=True, prevspeed=speed l})}
 		l = loco s

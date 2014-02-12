@@ -66,6 +66,7 @@ public class HumeListener implements Runnable{
     @Override
     public void run() {
         while(true){
+            System.out.println("HumeListener beginning of while(true)");
             String rec = null;
             try{
                 while(rec == null)
@@ -80,12 +81,13 @@ public class HumeListener implements Runnable{
                     int c = s.nextInt();
                     Locomotive l = locos.get(addrFromSlot(c));
                     LocoNetThrottle t = getThrottle(l);
-                    setSpeed(t,s.nextInt());
+                    setSpeed(l,t,s.nextInt());
                 }else if(i==1){
                     //reverse train
                     Locomotive l = locos.get(addrFromSlot(Integer.valueOf(s.nextInt())));
                     LocoNetThrottle t = getThrottle(l);
                     t.setIsForward(!t.getIsForward());
+                    endThrottle(l);
                 }else if(i==2){
                     //turnout
                     HumeTurnout ht = turns.get(s.next() + " " + s.next());
@@ -100,19 +102,31 @@ public class HumeListener implements Runnable{
     }
     
     LocoNetThrottle getThrottle(Locomotive l){
+        System.out.println("HumeListener getthrottle");
         LocoNetThrottle t = null;
         while(t==null)
             t = l.getThrottle();
         return t;
     }
 
-    void setSpeed(LocoNetThrottle t, int speed){
+    void setSpeed(Locomotive l, LocoNetThrottle t, int speed){
         //Attempt to stop hardware from ignoring speed message
         //while(t.getLocoNetSlot().speed() != speed)
-            t.setSpeedSetting(t.floatSpeed(speed));
+        System.out.println("HumeListener setspeed");
+        if(t==null) return;
+        //while(t.getSpeedSetting() != t.floatSpeed(speed))
+        t.setSpeedSetting(t.floatSpeed(speed));
+        endThrottle(l);
     }
     
     int addrFromSlot(int i){
+        System.out.println("HumeListener addrFromSlot");
         return slottoaddr.get(i);
+    }
+    
+    void endThrottle(Locomotive l){
+        //System.out.println("HumeListener endthrottle");
+        //l.getThrottle().release(l);
+        //l.setThrottle(null);
     }
 }
