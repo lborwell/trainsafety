@@ -43,7 +43,7 @@ public class HumeTurnout {
     }
     
     public synchronized String toString(){
-        return "turn " + (direction ? "fwd " : "bkw ") + trackID + " " + (lastRequest ? "set" : "unset");
+        return "turn " + trackID + " " + (direction ? "fwd " : "bkw ") + " " + (lastRequest ? "set" : "unset");
     }
     
     public synchronized boolean sendMsg(boolean req){

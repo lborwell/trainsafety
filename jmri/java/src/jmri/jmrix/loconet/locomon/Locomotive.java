@@ -60,10 +60,8 @@ public class Locomotive implements SlotListener, ThrottleListener{
         if(t==null){
             if(throttleRequested) return null;
             boolean b = false;
-            while(!b){
+            while(!b)
                 b = InstanceManager.throttleManagerInstance().requestThrottle(re, this);
-                System.out.println("Locomotive while(!b)");
-            }
             throttleRequested = true;
         }
         return t;
@@ -71,7 +69,6 @@ public class Locomotive implements SlotListener, ThrottleListener{
 
     @Override
     public synchronized void notifyThrottleFound(DccThrottle t) {
-        System.out.println("Locomotive notifyfound");
         this.t = (LocoNetThrottle) t;
     }
 

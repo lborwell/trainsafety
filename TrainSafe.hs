@@ -121,15 +121,17 @@ slower a b | speed (loco a) > speed (loco b) = b
 -- | When merging locos are found, pause the slower loco and ensure turnout is pointing
 -- at the one that will continue to move
 handleMerging :: Layout -> Section -> Section -> ([TrackInstruction],Layout)
-handleMerging t s s2 | slower s s2 == s = (a ++ [pointSwitchAt (findNextSection t s (direction (loco s))) s2],b)
-					 | otherwise = (c ++ [pointSwitchAt (findNextSection t s2 (direction (loco s2))) s],d)
+handleMerging t s s2 | slower s s2 == s = (a ++ e,f)
+					 | otherwise = (c ++ g,h)
 	where
 		(a,b) = pauseLoco t s
 		(c,d) = pauseLoco t s2
+		(e,f) = pointSwitchAt b (findNextSection b s (direction (loco s))) s2
+		(g,h) = pointSwitchAt d (findNextSection d s2 (direction (loco s2))) s
 
 -- | Set switch in from to point to to
-pointSwitchAt :: Section -> Section -> TrackInstruction
-pointSwitchAt from to = setSwitchToMerge from (sid to) (direction (loco to))
+pointSwitchAt :: Layout -> Section -> Section -> ([TrackInstruction],Layout)
+pointSwitchAt t from to = setSwitchToMerge t from (sid to) (direction (loco to))
 
 -- | Check waiting locos to see if it is safe to resume movement
 checkWaitingLocos :: Layout -> ([TrackInstruction], Layout)
@@ -157,8 +159,10 @@ checkUnpauseMerge t s | containsLoco (findParallel t s (direction l)) = ([],t)
 		l = loco s
 
 unpauseMergingLoco :: Layout -> Section -> ([TrackInstruction],Layout)
-unpauseMergingLoco t s = (pointSwitchAt (findNextSection t s (direction (loco s))) s : a,b)
-	where (a,b) = unpauseLoco t s
+unpauseMergingLoco t s = (c ++ a,d)
+	where
+		(a,b) = unpauseLoco t s
+		(c,d) = pointSwitchAt b (findNextSection b s (direction (loco s))) s
 
 -------------------------------------------------
 ---
@@ -205,11 +209,16 @@ checkFollowingSpeeds _ _ = []
 -- | Point switch in section switch to section with ID dest
 -- Direction FWD == change PREV switch, direction BKW == change NEXT switch
 -- (direction represents direction of loco moving towards switch)
-setSwitchToMerge :: Section -> SensorID -> Direction -> TrackInstruction
-setSwitchToMerge switch dest FWD | dest == head (prev switch) = "2 " ++ (sid switch) ++ " bkw unset"
-							| otherwise = "2 " ++ (sid switch) ++ " bkw set"
-setSwitchToMerge switch dest BKW | dest == head (next switch) = "2 " ++ (sid switch) ++ " fwd unset"
-							| otherwise = "2 " ++ (sid switch) ++ " fwd set"
+-- No LocoNet message occurs, so switching must update layout on the assumption
+-- that it has worked.
+setSwitchToMerge :: Layout -> Section -> SensorID -> Direction -> ([TrackInstruction],Layout)
+setSwitchToMerge t switch dest FWD | dest == head (prev switch) = (["2 " ++ (sid switch) ++ " bkw unset"],setSwitchToMergeLayout t switch BKW Unset)
+								   | otherwise = (["2 " ++ (sid switch) ++ " bkw set"],setSwitchToMergeLayout t switch BKW Set)
+setSwitchToMerge t switch dest BKW | dest == head (next switch) = (["2 " ++ (sid switch) ++ " fwd unset"],setSwitchToMergeLayout t switch FWD Unset)
+								   | otherwise = (["2 " ++ (sid switch) ++ " fwd set"],setSwitchToMergeLayout t switch FWD Set)
+
+setSwitchToMergeLayout :: Layout -> Section -> Direction -> TurnoutState -> Layout
+setSwitchToMergeLayout t switch d s = setTurnout t (TurnoutMessage{turnid=(sid switch), side=d, newstate=s })
 
 -- | Set loco speed to 0, loco state to waiting
 pauseLoco :: Layout -> Section -> ([TrackInstruction], Layout)

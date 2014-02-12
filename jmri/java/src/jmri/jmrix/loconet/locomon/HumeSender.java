@@ -29,6 +29,8 @@ public class HumeSender implements LnTrafficListener, LocoNetListener{
     Pattern dirp;
     Pattern turnp;
     
+    String lastSent;
+    
     /*
     A1: LS1953
     A2: LS1954
@@ -76,6 +78,8 @@ public class HumeSender implements LnTrafficListener, LocoNetListener{
         dirp = Pattern.compile(".*Set loco in slot (\\d+) direction to (FWD|REV).*");
         turnp = Pattern.compile(".*Requesting Switch at (\\d+) \\(\\) to (Thrown|Closed).*");
         
+        lastSent = "";
+        
         sensors = new HashMap<String,String>();
         sensors.put("1953", "A1");
         sensors.put("1954", "A2");
@@ -112,8 +116,9 @@ public class HumeSender implements LnTrafficListener, LocoNetListener{
     public void message(LocoNetMessage msg) {
         try{
             String m = llnmon.format(msg);
+            if(m.equals(lastSent)) return;
             sendMsg(m);
-            //pw.println(m);
+            lastSent = m;
         }catch(Exception e){ e.printStackTrace(); }
     }
 
@@ -138,10 +143,12 @@ public class HumeSender implements LnTrafficListener, LocoNetListener{
             }
             match = turnp.matcher(m);
             if(match.matches()){
+                System.out.println("Turnout match");
                 HumeTurnout t = turns.get(Integer.parseInt(match.group(1)));
                 if(t==null) return;
                 if(t.sendMsg(match.group(2).equals("Thrown")))
                     pw.println(t.toString());
+                return;
             }
         }catch (Exception e){ e.printStackTrace(); }
     }

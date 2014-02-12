@@ -66,7 +66,6 @@ public class HumeListener implements Runnable{
     @Override
     public void run() {
         while(true){
-            System.out.println("HumeListener beginning of while(true)");
             String rec = null;
             try{
                 while(rec == null)
@@ -91,18 +90,14 @@ public class HumeListener implements Runnable{
                 }else if(i==2){
                     //turnout
                     HumeTurnout ht = turns.get(s.next() + " " + s.next());
-                    System.out.println("Got turnout " + ht.toString());
-                    System.out.println("Turnout id " + ht.id);
                     ht.set(HumeTurnout.setToBool(s.next()));
                 }
             }catch(Exception e){ e.printStackTrace(); }
-            System.out.println("Received: " + rec);
             rec = null;
         }
     }
     
     LocoNetThrottle getThrottle(Locomotive l){
-        System.out.println("HumeListener getthrottle");
         LocoNetThrottle t = null;
         while(t==null)
             t = l.getThrottle();
@@ -112,7 +107,6 @@ public class HumeListener implements Runnable{
     void setSpeed(Locomotive l, LocoNetThrottle t, int speed){
         //Attempt to stop hardware from ignoring speed message
         //while(t.getLocoNetSlot().speed() != speed)
-        System.out.println("HumeListener setspeed");
         if(t==null) return;
         //while(t.getSpeedSetting() != t.floatSpeed(speed))
         t.setSpeedSetting(t.floatSpeed(speed));
@@ -120,7 +114,6 @@ public class HumeListener implements Runnable{
     }
     
     int addrFromSlot(int i){
-        System.out.println("HumeListener addrFromSlot");
         return slottoaddr.get(i);
     }
     
