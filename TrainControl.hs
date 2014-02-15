@@ -26,14 +26,14 @@ setSwitchToMergeLayout t switch d s = setTurnout t (TurnoutMessage{turnid=(sid s
 -- | Set loco speed to 0, loco state to waiting
 pauseLoco :: Layout -> Section -> ([TrackInstruction], Layout)
 pauseLoco t s | waiting l = ([],t)
-			  | otherwise = ([stopLoco l], Map.insert (sid s) (upd s) t)
+			  | otherwise = ([stopLoco l], setSection t (upd s))
 	where 
 		upd s = s { loco=(l { waiting=True, prevspeed=speed l})}
 		l = loco s
 
 -- | Set loco speed to speed before it was paused, waiting to false
 unpauseLoco :: Layout -> Section -> ([TrackInstruction], Layout)
-unpauseLoco t s = ([setLocoSpeed l (prevspeed l)], Map.insert (sid s) (upd s) t)
+unpauseLoco t s = ([setLocoSpeed l (prevspeed l)], setSection t (upd s))
 	where
 		upd s = s { loco=(l { waiting=False })}
 		l = loco s
@@ -48,12 +48,12 @@ setLocoSpeed l i = "0 " ++ show (slot l) ++ " " ++ show i
 
 -- | Find the next section in a given direction, noting turnout positions
 findNextSection :: Layout -> Section -> Direction -> Section
-findNextSection t s@(Section { nextturn=Noturn }) FWD = t Map.! (head (next s))
-findNextSection t s@(Section { prevturn=Noturn }) BKW = t Map.! (head (prev s))
-findNextSection t s@(Section { nextturn=Unset }) FWD = t Map.! (head (next s))
-findNextSection t s@(Section { prevturn=Unset }) BKW = t Map.! (head (prev s))
-findNextSection t s@(Section { nextturn=Set }) FWD = t Map.! (head (tail (next s)))
-findNextSection t s@(Section { prevturn=Set }) BKW = t Map.! (head (tail (prev s)))
+findNextSection t s@(Section { nextturn=Noturn }) FWD = getSection t (head (next s))
+findNextSection t s@(Section { prevturn=Noturn }) BKW = getSection t (head (prev s))
+findNextSection t s@(Section { nextturn=Unset }) FWD = getSection t (head (next s))
+findNextSection t s@(Section { prevturn=Unset }) BKW = getSection t (head (prev s))
+findNextSection t s@(Section { nextturn=Set }) FWD = getSection t (head (tail (next s)))
+findNextSection t s@(Section { prevturn=Set }) BKW = getSection t (head (tail (prev s)))
 
 -- | Find the section two steps ahead
 nextNextSection :: Layout -> Section -> Direction -> Section
@@ -65,7 +65,7 @@ containsLoco s = (loco s) /= Noloco
 
 -- | Track -> All sections containing a loco
 listLocos :: Layout -> [Section]
-listLocos t = Map.elems (Map.filter (containsLoco) t)
+listLocos t = searchLayout t containsLoco
 
 -- | Track -> All sections containing a waiting loco
 listWaitingLocos :: Layout -> [Section]
@@ -73,11 +73,10 @@ listWaitingLocos t = filter (\x -> waiting (loco x)) (listLocos t)
 
 -- | Return section containing loco with given slot number
 findLoco :: Layout -> Int -> Section
-findLoco t s = head (Map.elems (Map.filter (\x -> (slot (loco x)) == s) notempty))
-	where
-		notempty = Map.filter (containsLoco) t
+findLoco t s = head (filter (\x -> (slot (loco x)) == s) (listLocos t))
 
-
+searchLayout :: Layout -> (Section -> Bool) -> [Section]
+searchLayout t f = Map.elems (Map.filter f t)
 
 
 -------------------------------------------------
@@ -92,7 +91,7 @@ parseSpeed (_:a:b:_) = SpeedMessage { fromslot=(read a), newspeed=(read b) }
 
 -- | Update layout to represent new loco speed
 speedChange :: Layout -> Message -> Layout
-speedChange t m = Map.insert (sid sec) (sec { loco=((loco sec) { speed=(newspeed m) }) }) t
+speedChange t m = setSection t (sec { loco=((loco sec) { speed=(newspeed m) }) })
 	where sec = findLoco t (fromslot m)
 
 
@@ -109,7 +108,7 @@ parseDirection (_:a:b:_) = DirectionMessage { dirslot=(read a), newdir=(parsedir
 
 -- | Update layout to represent new loco direction
 changeDirection :: Layout -> Message -> Layout
-changeDirection t m = Map.insert (sid sec) (sec { loco=((loco sec) { direction=(newdir m) })}) t
+changeDirection t m = setSection t (sec { loco=((loco sec) { direction=(newdir m) })})
 	where sec = findLoco t (dirslot m)
 
 
@@ -128,9 +127,9 @@ parseTurn (_:a:b:c:_) = TurnoutMessage { turnid=a, side=(end b), newstate=(set c
 
 -- | Update layout to represent new turnout setting
 setTurnout :: Layout -> Message -> Layout
-setTurnout t m | side m == FWD = Map.insert (sid sec) (sec { nextturn=(newstate m) }) t
-			   | side m == BKW = Map.insert (sid sec) (sec { prevturn=(newstate m) }) t
-	where sec = t Map.! (turnid m)
+setTurnout t m | side m == FWD = setSection t (sec { nextturn=(newstate m) })
+			   | side m == BKW = setSection t (sec { prevturn=(newstate m) })
+	where sec = getSection t (turnid m)
 
 -------------------------------------------------
 --
@@ -150,18 +149,18 @@ parseSensor inp = SensorMessage { upd=up a, updid=b }
 		up x = if x == "Hi" then Hi else Low
 
 sectionSensorTrigger :: Layout -> Message -> Layout
-sectionSensorTrigger track msg = checkNeighbours track (track Map.! (updid msg)) (upd msg)
+sectionSensorTrigger track msg = checkNeighbours track (getSection track (updid msg)) (upd msg)
 
 checkNeighbours :: Layout -> Section -> SensorUpdate -> Layout
 checkNeighbours t s Hi | state nxt == Justleft && correctDirection s Hi NXT = moveLoco t nxt s
 					   | state prv == Justleft && correctDirection s Hi PRV = moveLoco t prv s
-					   | otherwise = Map.insert (sid s) ((t Map.! (sid s)) { state=Justentered }) t
+					   | otherwise = setSection t ((getSection t (sid s)) { state=Justentered })
 	where
 		nxt = findNextSection t s FWD
 		prv = findNextSection t s BKW
 checkNeighbours t s Low | state nxt == Justentered && correctDirection s Low NXT = moveLoco t s nxt
 						| state prv == Justentered && correctDirection s Low PRV = moveLoco t s prv
-						| otherwise = Map.insert (sid s) ((t Map.! (sid s)) { state=Justleft }) t
+						| otherwise = setSection t ((getSection t (sid s)) { state=Justleft })
 	where
 		nxt = findNextSection t s FWD
 		prv = findNextSection t s BKW
@@ -181,7 +180,13 @@ correctDirection ns Low PRV | direction (loco ns) == BKW = True
 
 
 moveLoco :: Layout -> Section -> Section -> Layout
-moveLoco t from to = clearSection (Map.insert (sid to) (to {state=Occupied,loco=(loco from)}) t) from
+moveLoco t from to = clearSection (setSection t (to {state=Occupied,loco=(loco from)})) from
 
 clearSection :: Layout -> Section -> Layout
-clearSection t s = Map.insert (sid s) (s {state=Empty, loco=Noloco}) t
+clearSection t s = setSection t (s {state=Empty, loco=Noloco})
+
+getSection :: Layout -> SensorID -> Section
+getSection t s = t Map.! s
+
+setSection :: Layout -> Section -> Layout
+setSection t s = Map.insert (sid s) s t

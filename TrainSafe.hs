@@ -5,7 +5,6 @@ import Testtracks
 import TrainControl
 
 import TrainSafetyTypes
-import qualified Data.Map as Map
 
 -- | Given layout and message from LocoNet, return updated
 -- layout and instructions to make layout safe
@@ -26,7 +25,7 @@ makeSafe :: Layout -> (MessageType, Message) -> ([TrackInstruction], Layout)
 makeSafe t (Speed, m) = makeSafe t (Sensor, (SensorMessage { upd=Hi, updid=(sid (findLoco t (fromslot m)))}))
 makeSafe t (Direction, m) = makeSafe t (Sensor, (SensorMessage { upd=Hi, updid=(sid (findLoco t (dirslot m)))}))
 makeSafe t (Sensor, m) = checkSensor t m
-makeSafe t (Turnout, m) | containsLoco (t Map.! (turnid m)) = makeSafe t (Sensor, (SensorMessage { upd=Hi, updid=(turnid m) }))
+makeSafe t (Turnout, m) | containsLoco (getSection t (turnid m)) = makeSafe t (Sensor, (SensorMessage { upd=Hi, updid=(turnid m) }))
 						| otherwise = ([],t)
 
 -- | Parse input message, return in more usable format
@@ -54,10 +53,12 @@ sensorSpeedCheck t s | l == Noloco = []
 
 -- | Given a sensor message, find the location of the responsible loco
 locoFromSensorMessage :: Layout -> Message -> Section
-locoFromSensorMessage t (SensorMessage {upd=Hi,updid=sd}) | state (t Map.! sd) == Occupied = (t Map.! sd)
-														  | otherwise = findAdjacentLoco t (t Map.! sd) Hi
-locoFromSensorMessage t (SensorMessage {upd=Low,updid=sd}) | state (t Map.! sd) == Justleft = (t Map.! sd)
-														  | otherwise = findAdjacentLoco t (t Map.! sd) Low
+locoFromSensorMessage t (SensorMessage {upd=Hi,updid=sd}) | state sec == Occupied = sec
+														  | otherwise = findAdjacentLoco t sec Hi
+	where sec = getSection t sd
+locoFromSensorMessage t (SensorMessage {upd=Low,updid=sd}) | state sec == Justleft = sec
+														  | otherwise = findAdjacentLoco t sec Low
+	where sec = getSection t sd
 
 
 -- | Called by locoFromSensorMessage, finds loco when sensor was triggered in adjacent
@@ -100,9 +101,9 @@ onMerge t s BKW = length (next (findNextSection t s BKW)) > 1
 
 -- | Find parallel section we are merging "in front" of.
 findParallel :: Layout -> Section -> Direction -> Section
-findParallel t s FWD = (t Map.! (head (filter ((sid s) /=) (prev n))))
+findParallel t s FWD = (getSection t (head (filter ((sid s) /=) (prev n))))
 	where n = findNextSection t s FWD
-findParallel t s BKW = (t Map.! (head (filter ((sid s) /=) (next p))))
+findParallel t s BKW = (getSection t (head (filter ((sid s) /=) (next p))))
 	where p = findNextSection t s BKW
 
 -- | Check if we may hit loco in "merging" position
