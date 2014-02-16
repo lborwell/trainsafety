@@ -94,10 +94,7 @@ findMerging :: Layout -> Section -> Direction -> Section
 findMerging t s d | onMerge t s d = checkLocoDirection t s (findParallel t s d)
 				  | otherwise = s
 
--- | Are we heading towards a turnout?
-onMerge :: Layout -> Section -> Direction -> Bool
-onMerge t s FWD = length (prev (findNextSection t s FWD)) > 1
-onMerge t s BKW = length (next (findNextSection t s BKW)) > 1
+
 
 -- | Find parallel section we are merging "in front" of.
 findParallel :: Layout -> Section -> Direction -> Section

@@ -9,6 +9,10 @@ data Direction = FWD | BKW deriving (Eq)
 instance Show Direction where
 	show d = if d==FWD then "Forward" else "Backward"
 
+rev :: Direction -> Direction
+rev FWD = BKW
+rev _ = FWD
+
 data TurnoutState = Set | Unset | Noturn deriving (Show, Eq)
 data State = Justleft | Justentered | Empty | Occupied deriving (Show, Eq)
 data SensorUpdate = Hi | Low deriving (Show, Eq)

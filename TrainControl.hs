@@ -14,14 +14,36 @@ import qualified Data.Map as Map
 -- (direction represents direction of loco moving towards switch)
 -- No LocoNet message occurs, so switching must update layout on the assumption
 -- that it has worked.
-setSwitchToMerge :: Layout -> Section -> SensorID -> Direction -> ([TrackInstruction],Layout)
+{-setSwitchToMerge :: Layout -> Section -> SensorID -> Direction -> ([TrackInstruction],Layout)
 setSwitchToMerge t switch dest FWD | dest == head (prev switch) = (["2 " ++ (sid switch) ++ " bkw unset"],setSwitchToMergeLayout t switch BKW Unset)
 								   | otherwise = (["2 " ++ (sid switch) ++ " bkw set"],setSwitchToMergeLayout t switch BKW Set)
 setSwitchToMerge t switch dest BKW | dest == head (next switch) = (["2 " ++ (sid switch) ++ " fwd unset"],setSwitchToMergeLayout t switch FWD Unset)
-								   | otherwise = (["2 " ++ (sid switch) ++ " fwd set"],setSwitchToMergeLayout t switch FWD Set)
+								   | otherwise = (["2 " ++ (sid switch) ++ " fwd set"],setSwitchToMergeLayout t switch FWD Set)-}
 
 setSwitchToMergeLayout :: Layout -> Section -> Direction -> TurnoutState -> Layout
 setSwitchToMergeLayout t switch d s = setTurnout t (TurnoutMessage{turnid=(sid switch), side=d, newstate=s })
+
+
+setSwitchToMerge :: Layout -> Section -> SensorID -> Direction -> [TrackInstruction]
+setSwitchToMerge t switch dest FWD | dest == head (prev switch) = ["2 " ++ (sid switch) ++ " bkw unset"]
+								   | otherwise = ["2 " ++ (sid switch) ++ " bkw set"]
+setSwitchToMerge t switch dest BKW | dest == head (next switch) = ["2 " ++ (sid switch) ++ " fwd unset"]
+								   | otherwise = ["2 " ++ (sid switch) ++ " fwd set"]
+
+
+
+setSwitchToDiverge :: Layout -> Section -> SensorID -> Direction -> [TrackInstruction]
+setSwitchToDiverge t switch dest FWD | dest == head (next switch) = ["2 " ++ (sid switch) ++ " fwd unset"]
+									 | otherwise = ["2 " ++ (sid switch) ++ " fwd set"]
+setSwitchToDiverge t switch dest BKW | dest == head (prev switch) = ["2 " ++ (sid switch) ++ " bkw unset"]
+									 | otherwise = ["2 " ++ (sid switch) ++ " bkw set"]
+
+setDivergingSwitch :: Layout -> Section -> SensorID -> Direction -> [TrackInstruction]
+setDivergingSwitch t s d d' | d'==FWD && length (prev s') > 1 = setSwitchToDiverge t s d d' ++ setSwitchToMerge t s' (sid s) d'
+							| d'==BKW && length (next s') > 1 = setSwitchToDiverge t s d d' ++ setSwitchToMerge t s' (sid s) d'
+							| otherwise = setSwitchToDiverge t s d d'
+	where
+		s' = getSection t d
 
 -- | Set loco speed to 0, loco state to waiting
 pauseLoco :: Layout -> Section -> ([TrackInstruction], Layout)
@@ -45,6 +67,10 @@ stopLoco l = setLocoSpeed l 0
 -- | Set locomotive speed to given value
 setLocoSpeed :: Locomotive -> Int -> TrackInstruction
 setLocoSpeed l i = "0 " ++ show (slot l) ++ " " ++ show i
+
+setLocoDirection :: Locomotive -> Direction -> TrackInstruction
+setLocoDirection l FWD = "1 " ++ show (slot l) ++ " fwd"
+setLocoDirection l BKW = "1 " ++ show (slot l) ++ " bkw"
 
 -- | Find the next section in a given direction, noting turnout positions
 findNextSection :: Layout -> Section -> Direction -> Section
@@ -78,6 +104,10 @@ findLoco t s = head (filter (\x -> (slot (loco x)) == s) (listLocos t))
 searchLayout :: Layout -> (Section -> Bool) -> [Section]
 searchLayout t f = Map.elems (Map.filter f t)
 
+-- | Are we heading towards a turnout?
+onMerge :: Layout -> Section -> Direction -> Bool
+onMerge t s FWD = length (prev (findNextSection t s FWD)) > 1
+onMerge t s BKW = length (next (findNextSection t s BKW)) > 1
 
 -------------------------------------------------
 --
