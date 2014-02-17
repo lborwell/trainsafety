@@ -49,14 +49,6 @@ public class Locomotive implements SlotListener, ThrottleListener{
     }
     
     public synchronized LocoNetThrottle getThrottle(){
-        //if(s==null)
-            //m.getSlotManager().slotFromLocoAddress(addr, this);
-        //if(t==null && s != null){
-            //t = new LocoNetThrottle(m,s);
-            //System.out.println("creating throttle");
-        //}
-        //if(s==null)
-            //System.out.println("s null");
         if(t==null){
             if(throttleRequested) return null;
             boolean b = false;

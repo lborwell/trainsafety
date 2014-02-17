@@ -120,14 +120,14 @@ pathToInstrs' t (a:b:[]) l = [(b,[stopLoco l])]
 pathToInstrs' t (a:b:xs) l = (b, processJoin t (a,b,(head xs)) l) : pathToInstrs' t (b:xs) l
 
 processJoin :: Layout -> (SensorID, SensorID, SensorID) -> Locomotive -> [TrackInstruction]
-processJoin t (from, curr, to) l = processJoinDirection t (a,b,c) l ++ processJoinSwitch t (b,c) (directionBetween b c)
+processJoin t (from, curr, to) l = processJoinSwitch t (b,c) (directionBetween b c) ++ processJoinDirection t (a,b,c) l
 	where
 		a = getSection t from
 		b = getSection t curr
 		c = getSection t to
 
 processJoinDirection :: Layout -> (Section,Section,Section) -> Locomotive -> [TrackInstruction]
-processJoinDirection t (a,b,c) l | d /= d' = [setLocoDirection l d']
+processJoinDirection t (a,b,c) l | d /= d' = reverseLoco l
 								 | otherwise = []
 	where
 		d = directionBetween a b
@@ -135,13 +135,16 @@ processJoinDirection t (a,b,c) l | d /= d' = [setLocoDirection l d']
 
 processJoinSwitch :: Layout -> (Section,Section) -> Direction -> [TrackInstruction]
 processJoinSwitch t (a,b) FWD | nextturn a == Noturn = []
-							  | otherwise = setSwitchToDiverge t a (sid b) FWD
+							  -- | otherwise = setSwitchToDiverge t a (sid b) FWD
+                | otherwise = setDivergingSwitch t a (sid b) FWD
 processJoinSwitch t (a,b) BKW | prevturn a == Noturn = []
-							  | otherwise = setSwitchToDiverge t a (sid b) BKW
+							  | otherwise = setDivergingSwitch t a (sid b) BKW
 
 directionBetween :: Section -> Section -> Direction
 directionBetween from to | (sid to) `elem` (next from) = FWD
 						 | otherwise = BKW
+
+
 
 main :: IO ()
 main = do

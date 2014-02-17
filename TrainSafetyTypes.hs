@@ -2,7 +2,7 @@ module TrainSafetyTypes where
 
 import qualified Data.Map as Map
 
-type Layout = Map.Map String Section
+--type Layout = Map.Map String Section
 type TrackInstruction = String
 type SensorID = String
 data Direction = FWD | BKW deriving (Eq)
@@ -17,6 +17,18 @@ data TurnoutState = Set | Unset | Noturn deriving (Show, Eq)
 data State = Justleft | Justentered | Empty | Occupied deriving (Show, Eq)
 data SensorUpdate = Hi | Low deriving (Show, Eq)
 data MessageType = Speed | Direction | Sensor | Turnout deriving (Show, Eq)
+
+data Layout = Layout { track :: Map.Map String Section
+					 , locos :: Map.Map Int String
+					 } deriving (Show)
+
+buildLayout :: [(String,Section)] -> Layout
+buildLayout a = Layout { track=(Map.fromList a), locos=(Map.fromList (buildLocos a)) }
+
+buildLocos :: [(String,Section)] -> [(Int,String)]
+buildLocos [] = []
+buildLocos ((a,b):xs) | loco b /= Noloco = (slot (loco b),a) : buildLocos xs
+					  | otherwise = buildLocos xs
 
 data Message = SpeedMessage { fromslot :: Int
 							, newspeed :: Int
@@ -82,3 +94,43 @@ instance Show Locomotive where
 
 locoshow :: Locomotive -> String
 locoshow l = "Loco " ++ show (slot l) ++ " going " ++ show (direction l) ++ " at " ++ show (speed l) ++ " (id " ++ show (ide l) ++ ")"
+
+
+
+getSection :: Layout -> SensorID -> Section
+getSection t s = (track t) Map.! s
+
+setSection :: Layout -> Section -> Layout
+setSection t s = t { track=(Map.insert (sid s) s (track t)) }
+
+getLocoBySlot :: Layout -> Int -> Locomotive
+getLocoBySlot t i = loco (getSectionBySlot t i)
+
+getLocoBySensorID :: Layout -> SensorID -> Locomotive
+getLocoBySensorID t s = loco ((track t) Map.! s)
+
+getLocoBySection :: Section -> Locomotive
+getLocoBySection s = loco s
+
+getSectionBySlot :: Layout -> Int -> Section
+getSectionBySlot t i = (track t) Map.! ((locos t) Map.! i)
+
+setSectionLoco :: Section -> Locomotive -> Section
+setSectionLoco s l = s { loco=l }
+
+updateLoco :: Layout -> Locomotive -> Layout
+updateLoco t l = t { track=Map.insert (sid sec) (setSectionLoco sec l) (track t) }
+	where
+		sec = getSectionBySlot t i
+		i = slot l
+
+moveLoco :: Layout -> Section -> Section -> Layout
+moveLoco t from to = clearSection (Layout { track=Map.insert (sid to) (setSectionLoco (to {state=Occupied}) l) (track t), locos=Map.insert (slot l) (sid to) (locos t)}) from
+	where
+		l = getLocoBySection from
+
+clearSection :: Layout -> Section -> Layout
+clearSection t s = setSection t (s {state=Empty, loco=Noloco})
+
+searchLayout :: Layout -> (Section -> Bool) -> [Section]
+searchLayout t f = Map.elems (Map.filter f (track t))

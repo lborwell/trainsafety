@@ -12,25 +12,12 @@ import qualified Data.Map as Map
 -- | Point switch in section switch to section with ID dest
 -- Direction FWD == change PREV switch, direction BKW == change NEXT switch
 -- (direction represents direction of loco moving towards switch)
--- No LocoNet message occurs, so switching must update layout on the assumption
--- that it has worked.
-{-setSwitchToMerge :: Layout -> Section -> SensorID -> Direction -> ([TrackInstruction],Layout)
-setSwitchToMerge t switch dest FWD | dest == head (prev switch) = (["2 " ++ (sid switch) ++ " bkw unset"],setSwitchToMergeLayout t switch BKW Unset)
-								   | otherwise = (["2 " ++ (sid switch) ++ " bkw set"],setSwitchToMergeLayout t switch BKW Set)
-setSwitchToMerge t switch dest BKW | dest == head (next switch) = (["2 " ++ (sid switch) ++ " fwd unset"],setSwitchToMergeLayout t switch FWD Unset)
-								   | otherwise = (["2 " ++ (sid switch) ++ " fwd set"],setSwitchToMergeLayout t switch FWD Set)-}
-
-setSwitchToMergeLayout :: Layout -> Section -> Direction -> TurnoutState -> Layout
-setSwitchToMergeLayout t switch d s = setTurnout t (TurnoutMessage{turnid=(sid switch), side=d, newstate=s })
-
 
 setSwitchToMerge :: Layout -> Section -> SensorID -> Direction -> [TrackInstruction]
 setSwitchToMerge t switch dest FWD | dest == head (prev switch) = ["2 " ++ (sid switch) ++ " bkw unset"]
 								   | otherwise = ["2 " ++ (sid switch) ++ " bkw set"]
 setSwitchToMerge t switch dest BKW | dest == head (next switch) = ["2 " ++ (sid switch) ++ " fwd unset"]
 								   | otherwise = ["2 " ++ (sid switch) ++ " fwd set"]
-
-
 
 setSwitchToDiverge :: Layout -> Section -> SensorID -> Direction -> [TrackInstruction]
 setSwitchToDiverge t switch dest FWD | dest == head (next switch) = ["2 " ++ (sid switch) ++ " fwd unset"]
@@ -72,6 +59,9 @@ setLocoDirection :: Locomotive -> Direction -> TrackInstruction
 setLocoDirection l FWD = "1 " ++ show (slot l) ++ " fwd"
 setLocoDirection l BKW = "1 " ++ show (slot l) ++ " bkw"
 
+reverseLoco :: Locomotive -> [TrackInstruction]
+reverseLoco l = stopLoco l : [setLocoDirection l (rev (direction l))] ++ [setLocoSpeed l (speed l)]
+
 -- | Find the next section in a given direction, noting turnout positions
 findNextSection :: Layout -> Section -> Direction -> Section
 findNextSection t s@(Section { nextturn=Noturn }) FWD = getSection t (head (next s))
@@ -100,9 +90,6 @@ listWaitingLocos t = filter (\x -> waiting (loco x)) (listLocos t)
 -- | Return section containing loco with given slot number
 findLoco :: Layout -> Int -> Section
 findLoco t s = head (filter (\x -> (slot (loco x)) == s) (listLocos t))
-
-searchLayout :: Layout -> (Section -> Bool) -> [Section]
-searchLayout t f = Map.elems (Map.filter f t)
 
 -- | Are we heading towards a turnout?
 onMerge :: Layout -> Section -> Direction -> Bool
@@ -207,16 +194,3 @@ correctDirection ns Low NXT | direction (loco ns) == FWD = True
 							| otherwise = False
 correctDirection ns Low PRV | direction (loco ns) == BKW = True
 							| otherwise = False
-
-
-moveLoco :: Layout -> Section -> Section -> Layout
-moveLoco t from to = clearSection (setSection t (to {state=Occupied,loco=(loco from)})) from
-
-clearSection :: Layout -> Section -> Layout
-clearSection t s = setSection t (s {state=Empty, loco=Noloco})
-
-getSection :: Layout -> SensorID -> Section
-getSection t s = t Map.! s
-
-setSection :: Layout -> Section -> Layout
-setSection t s = Map.insert (sid s) s t

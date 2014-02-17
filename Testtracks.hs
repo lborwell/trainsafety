@@ -3,25 +3,6 @@ module Testtracks where
 import TrainSafetyTypes
 import qualified Data.Map as Map
 
-test1 :: Section
-test1 = Section { state=Occupied, prev=["T2"], next=[], speedlim=113, loco=testLoco, sid="T1", nextturn=Noturn, prevturn=Noturn }
-
-test2 :: Section
-test2 = Section { state=Empty, prev=[], next=["T1"], speedlim=113, loco=Noloco, sid="T2", nextturn=Noturn, prevturn=Noturn }
-
-test3 :: Section
-test3 = Section { state=Occupied, prev=["T4"], next=[], speedlim=113, loco=testLoco, sid="T3", nextturn=Noturn, prevturn=Noturn }
-
-test4 :: Section
-test4 = Section { state=Empty, prev=[], next=["T3"], speedlim=113, loco=Noloco, sid="T4", nextturn=Noturn, prevturn=Noturn }
-
-testTrack :: [(String,Section)]
-testTrack = [("T1",test1),("T2",test2),("T3",test3),("T4",test4)]
-
-testDict :: Layout
-testDict = Map.fromList testTrack
-
-
 testLoco :: Locomotive
 testLoco = Locomotive { slot=9, speed=0, ide=2, direction=FWD, waiting=False, prevspeed=0 }
 
@@ -55,8 +36,8 @@ d1 = Section { state=Empty, prev=["C1"], next=["A1","A2"], speedlim=113, loco=No
 d2 :: Section
 d2 = Section { state=Empty, prev=["C2"], next=["A2"], speedlim=113, loco=Noloco, sid="D2", prevturn=Noturn, nextturn=Noturn }
 
-track :: [(String, Section)]
-track = [("A1",a1),("A2",a2),("B1",b1),("B2",b2),("C1",c1),("C2",c2),("D1",d1),("D2",d2)]
+actualtrack :: [(String, Section)]
+actualtrack = [("A1",a1),("A2",a2),("B1",b1),("B2",b2),("C1",c1),("C2",c2),("D1",d1),("D2",d2)]
 
 trackDict :: Layout 
-trackDict = Map.fromList track
+trackDict = buildLayout actualtrack

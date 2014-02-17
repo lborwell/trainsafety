@@ -83,10 +83,10 @@ public class HumeListener implements Runnable{
                     setSpeed(l,t,s.nextInt());
                 }else if(i==1){
                     //reverse train
+                    String dir = s.next();
                     Locomotive l = locos.get(addrFromSlot(Integer.valueOf(s.nextInt())));
                     LocoNetThrottle t = getThrottle(l);
-                    t.setIsForward(!t.getIsForward());
-                    endThrottle(l);
+                    t.setIsForward(dir.equals("fwd"));
                 }else if(i==2){
                     //turnout
                     HumeTurnout ht = turns.get(s.next() + " " + s.next());
@@ -110,16 +110,10 @@ public class HumeListener implements Runnable{
         if(t==null) return;
         //while(t.getSpeedSetting() != t.floatSpeed(speed))
         t.setSpeedSetting(t.floatSpeed(speed));
-        endThrottle(l);
     }
     
     int addrFromSlot(int i){
         return slottoaddr.get(i);
     }
     
-    void endThrottle(Locomotive l){
-        //System.out.println("HumeListener endthrottle");
-        //l.getThrottle().release(l);
-        //l.setThrottle(null);
-    }
 }

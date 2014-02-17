@@ -121,16 +121,16 @@ slower a b | speed (loco a) > speed (loco b) = b
 -- | When merging locos are found, pause the slower loco and ensure turnout is pointing
 -- at the one that will continue to move
 handleMerging :: Layout -> Section -> Section -> ([TrackInstruction],Layout)
-handleMerging t s s2 | slower s s2 == s = (a ++ e,f)
-					 | otherwise = (c ++ g,h)
+handleMerging t s s2 | slower s s2 == s = (a ++ e,b)
+					 | otherwise = (c ++ f,d)
 	where
 		(a,b) = pauseLoco t s
 		(c,d) = pauseLoco t s2
-		(e,f) = pointSwitchAt b (findNextSection b s (direction (loco s))) s2
-		(g,h) = pointSwitchAt d (findNextSection d s2 (direction (loco s2))) s
+		e = pointSwitchAt b (findNextSection b s (direction (loco s))) s2
+		f = pointSwitchAt d (findNextSection d s2 (direction (loco s2))) s
 
 -- | Set switch in from to point to to
-pointSwitchAt :: Layout -> Section -> Section -> ([TrackInstruction],Layout)
+pointSwitchAt :: Layout -> Section -> Section -> [TrackInstruction]
 pointSwitchAt t from to = setSwitchToMerge t from (sid to) (direction (loco to))
 
 -- | Check waiting locos to see if it is safe to resume movement
@@ -159,10 +159,10 @@ checkUnpauseMerge t s | containsLoco (findParallel t s (direction l)) = ([],t)
 		l = loco s
 
 unpauseMergingLoco :: Layout -> Section -> ([TrackInstruction],Layout)
-unpauseMergingLoco t s = (c ++ a,d)
+unpauseMergingLoco t s = (c ++ a,b)
 	where
 		(a,b) = unpauseLoco t s
-		(c,d) = pointSwitchAt b (findNextSection b s (direction (loco s))) s
+		c = pointSwitchAt b (findNextSection b s (direction (loco s))) s
 
 -------------------------------------------------
 ---
