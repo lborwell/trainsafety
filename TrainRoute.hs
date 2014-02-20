@@ -68,8 +68,8 @@ layoutToArrayMaps t = (Map.fromList (layoutNumSids t), Map.fromList (layoutSidNu
 layoutNumSids :: Layout -> [(Int, String)]
 layoutNumSids t = zip [0..n] sids
 	where
-		sids = Prelude.map sid (Map.elems t)
-		n = Map.size t
+		sids = layoutSids t
+		n = trackLength t
 
 layoutSidNums :: Layout -> [(String,Int)]
 layoutSidNums t = Prelude.map (\(a,b) -> (b,a)) (layoutNumSids t)
@@ -81,11 +81,11 @@ layoutNumSidsMap :: Layout -> Map.Map Int String
 layoutNumSidsMap t = Map.fromList (layoutNumSids t)
 
 layoutAdjList :: Layout -> Array Int [(Int, Int)]
-layoutAdjList t = listArray (0, (Map.size t)-1) (buildArr (layoutNumSids t))
+layoutAdjList t = listArray (0, (trackLength t)-1) (buildArr (layoutNumSids t))
 	where
 		buildArr [] = []
 		buildArr ((a,b):xs) = [[(x,1) | x <- Prelude.map ((layoutSidNumsMap t) Map.!) ((next (sec b)) ++ (prev (sec b))) ]] ++ buildArr xs
-		sec y = t Map.! y
+		sec y = getSection t y
 
 numsToSids :: Map.Map Int String -> [Int] -> [String]
 numsToSids m = Prelude.map (m Map.!)
@@ -110,8 +110,8 @@ pathToInstrs _ (a:[]) l = [(a,[stopLoco l])]
 --pathToInstrs t (a:b:[]) l = (a,[setLocoDirection l (directionBetween seca secb)])
 pathToInstrs t x@(a:b:xs) l = (a,[setLocoDirection l (directionBetween seca secb)]) : pathToInstrs' t x l
 	where
-		seca = t Map.! a
-		secb = t Map.! b
+		seca = getSection t a
+		secb = getSection t b
 
 
 pathToInstrs' :: Layout -> [SensorID] -> Locomotive -> [(SensorID,[TrackInstruction])]

@@ -134,3 +134,9 @@ clearSection t s = setSection t (s {state=Empty, loco=Noloco})
 
 searchLayout :: Layout -> (Section -> Bool) -> [Section]
 searchLayout t f = Map.elems (Map.filter f (track t))
+
+layoutSids :: Layout -> [SensorID]
+layoutSids t = Map.keys (track t)
+
+trackLength :: Layout -> Int
+trackLength t = Map.size (track t)
