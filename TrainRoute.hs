@@ -136,7 +136,7 @@ processJoinDirection t (a,b,c) l | d /= d' = reverseLoco l
 processJoinSwitch :: Layout -> (Section,Section) -> Direction -> [TrackInstruction]
 processJoinSwitch t (a,b) FWD | nextturn a == Noturn = []
 							  -- | otherwise = setSwitchToDiverge t a (sid b) FWD
-                | otherwise = setDivergingSwitch t a (sid b) FWD
+                              | otherwise = setDivergingSwitch t a (sid b) FWD
 processJoinSwitch t (a,b) BKW | prevturn a == Noturn = []
 							  | otherwise = setDivergingSwitch t a (sid b) BKW
 
@@ -148,7 +148,19 @@ directionBetween from to | (sid to) `elem` (next from) = FWD
 
 main :: IO ()
 main = do
-  let (min_distance, previous) = dijkstra 'a' ' ' adj_list
-  putStrLn $ "Distance from a to e: " ++ show (min_distance ! 'e')
-  let path = shortest_path_to 'e' ' ' previous
-  putStrLn $ "Path: " ++ show path
+    let t = trackDict
+    let st = makeStruct t
+    runrun st t
+
+    --let (min_distance, previous) = dijkstra 'a' ' ' adj_list
+    --putStrLn $ "Distance from a to e: " ++ show (min_distance ! 'e')
+    --let path = shortest_path_to 'e' ' ' previous
+    --putStrLn $ "Path: " ++ show path
+
+runrun :: DijkStruct -> Layout -> IO ()
+runrun s t = do
+    putStrLn "Enter path (loco id from to):"
+    inp <- getLine
+    let (slot:from:to:_) = words inp
+    putStrLn (show (pathToInstrs t (doAPath s from to) (getLocoBySlot t (read slot))))
+    runrun s t

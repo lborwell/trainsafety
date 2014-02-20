@@ -1,7 +1,6 @@
 module TrainControl where
 
 import TrainSafetyTypes
-import qualified Data.Map as Map
 
 -------------------------------------------------
 ---

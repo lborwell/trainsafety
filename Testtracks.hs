@@ -1,7 +1,6 @@
 module Testtracks where
 
 import TrainSafetyTypes
-import qualified Data.Map as Map
 
 testLoco :: Locomotive
 testLoco = Locomotive { slot=9, speed=0, ide=2, direction=FWD, waiting=False, prevspeed=0 }
