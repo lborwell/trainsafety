@@ -6,34 +6,20 @@ import TrainControl
 
 import TrainSafetyTypes
 
--- | Given layout and message from LocoNet, return updated
--- layout and instructions to make layout safe
-process :: Layout -> String -> ([TrackInstruction],Layout)
-process t s = makeSafe (updateLayout t msg) msg
-	where msg = checkMessage (words s)
-
--- | Given layout and message, update layout to state of new message
-updateLayout :: Layout -> (MessageType, Message) -> Layout
-updateLayout t (Speed,m) = speedChange t m
-updateLayout t (Direction,m) = changeDirection t m
-updateLayout t (Sensor,m) = sectionSensorTrigger t m
-updateLayout t (Turnout,m) = setTurnout t m
+process :: Layout -> Message -> ([TrackInstruction],Layout)
+process t m@(SpeedMessage {}) = makeSafe t (Speed, m)
+process t m@(DirectionMessage {}) = makeSafe t (Direction, m)
+process t m@(SensorMessage {}) = makeSafe t (Sensor, m)
+process t m@(TurnoutMessage {}) = makeSafe t (Turnout, m)
 
 -- | Examine layout and current LocoNet message to maintain safety
 makeSafe :: Layout -> (MessageType, Message) -> ([TrackInstruction], Layout)
 --makeSafe t (Speed, m) = (checkSpeed t m, t)
-makeSafe t (Speed, m) = makeSafe t (Sensor, (SensorMessage { upd=Hi, updid=(sid (findLoco t (fromslot m)))}))
-makeSafe t (Direction, m) = makeSafe t (Sensor, (SensorMessage { upd=Hi, updid=(sid (findLoco t (dirslot m)))}))
+makeSafe t (Speed, m) = makeSafe t (Sensor, (SensorMessage { upd=Hi, updid=(sid (getSectionBySlot t (fromslot m)))}))
+makeSafe t (Direction, m) = makeSafe t (Sensor, (SensorMessage { upd=Hi, updid=(sid (getSectionBySlot t (dirslot m)))}))
 makeSafe t (Sensor, m) = checkSensor t m
 makeSafe t (Turnout, m) | containsLoco (getSection t (turnid m)) = makeSafe t (Sensor, (SensorMessage { upd=Hi, updid=(turnid m) }))
 						| otherwise = ([],t)
-
--- | Parse input message, return in more usable format
-checkMessage :: [String] -> (MessageType, Message)
-checkMessage a@("speed":_) = (Speed, parseSpeed a)
-checkMessage a@("dir":_) = (Direction, parseDirection a)
-checkMessage a@("sensor":_) = (Sensor, parseSensor a)
-checkMessage a@("turn":_) = (Turnout, parseTurn a)
 
 -- | Given a sensor input message, ensure safety of layout
 checkSensor :: Layout -> Message -> ([TrackInstruction], Layout)
@@ -174,7 +160,7 @@ unpauseMergingLoco t s = (c ++ a,b)
 checkSpeed :: Layout -> Message -> [TrackInstruction]
 checkSpeed t s = (checkSpeedLimit sec) ++ (checkFollowing t sec)
 	where
-		sec = findLoco t (fromslot s)
+		sec = getSectionBySlot t (fromslot s)
 
 -- | If the locomotive is exceeding speed limit, slow it to the limit
 checkSpeedLimit :: Section -> [TrackInstruction]
@@ -206,7 +192,7 @@ checkFollowingSpeeds _ _ = []
 
 
 
-test :: ([TrackInstruction],Layout) -> [String] -> ([TrackInstruction],Layout)
+{-test :: ([TrackInstruction],Layout) -> [String] -> ([TrackInstruction],Layout)
 test a b = foldl (combne) a b
 
 speedReset = ["speed 8 0","speed 9 0"]
@@ -218,4 +204,4 @@ singleMerge = ["speed 9 113","sensor Hi C1","sensor Low B2"]
 
 combne :: ([TrackInstruction],Layout) -> String -> ([TrackInstruction],Layout)
 combne a b = ((fst a) ++ [b ++ ":"] ++ (c) ++ [""], d)
-	where (c,d) = process (snd a) b
+	where (c,d) = process (snd a) b-}

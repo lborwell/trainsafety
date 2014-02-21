@@ -140,3 +140,12 @@ layoutSids t = Map.keys (track t)
 
 trackLength :: Layout -> Int
 trackLength t = Map.size (track t)
+
+-- | Find the next section in a given direction, noting turnout positions
+findNextSection :: Layout -> Section -> Direction -> Section
+findNextSection t s@(Section { nextturn=Noturn }) FWD = getSection t (head (next s))
+findNextSection t s@(Section { prevturn=Noturn }) BKW = getSection t (head (prev s))
+findNextSection t s@(Section { nextturn=Unset }) FWD = getSection t (head (next s))
+findNextSection t s@(Section { prevturn=Unset }) BKW = getSection t (head (prev s))
+findNextSection t s@(Section { nextturn=Set }) FWD = getSection t (head (tail (next s)))
+findNextSection t s@(Section { prevturn=Set }) BKW = getSection t (head (tail (prev s)))
