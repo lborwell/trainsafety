@@ -12,38 +12,38 @@ import TrainSafetyTypes
 -- Direction FWD == change PREV switch, direction BKW == change NEXT switch
 -- (direction represents direction of loco moving towards switch)
 
-setSwitchToMerge :: Layout -> Section -> SensorID -> Direction -> [TrackInstruction]
-setSwitchToMerge t switch dest FWD | dest == head (prev switch) = ["2 " ++ (sid switch) ++ " bkw unset"]
-								   | otherwise = ["2 " ++ (sid switch) ++ " bkw set"]
-setSwitchToMerge t switch dest BKW | dest == head (next switch) = ["2 " ++ (sid switch) ++ " fwd unset"]
-								   | otherwise = ["2 " ++ (sid switch) ++ " fwd set"]
+setSwitchToMerge :: Section -> SensorID -> Direction -> [TrackInstruction]
+setSwitchToMerge switch dest FWD | dest == head (prev switch) = ["2 " ++ (sid switch) ++ " bkw unset"]
+							     | otherwise = ["2 " ++ (sid switch) ++ " bkw set"]
+setSwitchToMerge switch dest BKW | dest == head (next switch) = ["2 " ++ (sid switch) ++ " fwd unset"]
+								 | otherwise = ["2 " ++ (sid switch) ++ " fwd set"]
 
-setSwitchToDiverge :: Layout -> Section -> SensorID -> Direction -> [TrackInstruction]
-setSwitchToDiverge t switch dest FWD | dest == head (next switch) = ["2 " ++ (sid switch) ++ " fwd unset"]
-									 | otherwise = ["2 " ++ (sid switch) ++ " fwd set"]
-setSwitchToDiverge t switch dest BKW | dest == head (prev switch) = ["2 " ++ (sid switch) ++ " bkw unset"]
-									 | otherwise = ["2 " ++ (sid switch) ++ " bkw set"]
+setSwitchToDiverge :: Section -> SensorID -> Direction -> [TrackInstruction]
+setSwitchToDiverge switch dest FWD | dest == head (next switch) = ["2 " ++ (sid switch) ++ " fwd unset"]
+								   | otherwise = ["2 " ++ (sid switch) ++ " fwd set"]
+setSwitchToDiverge switch dest BKW | dest == head (prev switch) = ["2 " ++ (sid switch) ++ " bkw unset"]
+								   | otherwise = ["2 " ++ (sid switch) ++ " bkw set"]
 
 setDivergingSwitch :: Layout -> Section -> SensorID -> Direction -> [TrackInstruction]
-setDivergingSwitch t s d d' | d'==FWD && length (prev s') > 1 = setSwitchToDiverge t s d d' ++ setSwitchToMerge t s' (sid s) d'
-							| d'==BKW && length (next s') > 1 = setSwitchToDiverge t s d d' ++ setSwitchToMerge t s' (sid s) d'
-							| otherwise = setSwitchToDiverge t s d d'
+setDivergingSwitch t s d d' | d'==FWD && length (prev s') > 1 = setSwitchToDiverge s d d' ++ setSwitchToMerge s' (sid s) d'
+							| d'==BKW && length (next s') > 1 = setSwitchToDiverge s d d' ++ setSwitchToMerge s' (sid s) d'
+							| otherwise = setSwitchToDiverge s d d'
 	where
 		s' = getSection t d
 
 -- | Set loco speed to 0, loco state to waiting
 pauseLoco :: Layout -> Section -> ([TrackInstruction], Layout)
 pauseLoco t s | waiting l = ([],t)
-			  | otherwise = ([stopLoco l], setSection t (upd s))
+			  | otherwise = ([stopLoco l], setSection t u)
 	where 
-		upd s = s { loco=(l { waiting=True, prevspeed=speed l})}
+		u = s { loco=(l { waiting=True, prevspeed=speed l})}
 		l = loco s
 
 -- | Set loco speed to speed before it was paused, waiting to false
 unpauseLoco :: Layout -> Section -> ([TrackInstruction], Layout)
-unpauseLoco t s = ([setLocoSpeed l (prevspeed l)], setSection t (upd s))
+unpauseLoco t s = ([setLocoSpeed l (prevspeed l)], setSection t u)
 	where
-		upd s = s { loco=(l { waiting=False })}
+		u = s { loco=(l { waiting=False })}
 		l = loco s
 
 -- | Set locomotive speed to zero
@@ -54,12 +54,17 @@ stopLoco l = setLocoSpeed l 0
 setLocoSpeed :: Locomotive -> Int -> TrackInstruction
 setLocoSpeed l i = "0 " ++ show (slot l) ++ " " ++ show i
 
-setLocoDirection :: Locomotive -> Direction -> TrackInstruction
-setLocoDirection l FWD = "1 " ++ show (slot l) ++ " fwd"
-setLocoDirection l BKW = "1 " ++ show (slot l) ++ " bkw"
+setLocoDirection :: Locomotive -> Direction -> [TrackInstruction]
+setLocoDirection l d | direction l == d = []
+					 | otherwise = reverseLoco l
+--setLocoDirection l FWD = "1 " ++ show (slot l) ++ " fwd"
+--setLocoDirection l BKW = "1 " ++ show (slot l) ++ " bkw"
 
 reverseLoco :: Locomotive -> [TrackInstruction]
-reverseLoco l = stopLoco l : [setLocoDirection l (rev (direction l))] ++ [setLocoSpeed l (speed l)]
+--reverseLoco l = stopLoco l : [setLocoDirection l (rev (direction l))] ++ [setLocoSpeed l (speed l)]
+reverseLoco l = stopLoco l : ["1 " ++ show (slot l) ++ " " ++ d] ++ [setLocoSpeed l (speed l)]
+	where
+		d = if (direction l) == FWD then "bkw" else "fwd"
 
 
 
@@ -67,13 +72,7 @@ reverseLoco l = stopLoco l : [setLocoDirection l (rev (direction l))] ++ [setLoc
 nextNextSection :: Layout -> Section -> Direction -> Section
 nextNextSection t s d = findNextSection t (findNextSection t s d) d
 
--- | Does the section contain a loco
-containsLoco :: Section -> Bool
-containsLoco s = (loco s) /= Noloco
 
--- | Track -> All sections containing a loco
-listLocos :: Layout -> [Section]
-listLocos t = searchLayout t containsLoco
 
 -- | Track -> All sections containing a waiting loco
 listWaitingLocos :: Layout -> [Section]

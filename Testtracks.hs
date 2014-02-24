@@ -3,13 +3,13 @@ module Testtracks where
 import TrainSafetyTypes
 
 testLoco :: Locomotive
-testLoco = Locomotive { slot=9, speed=0, ide=2, direction=FWD, waiting=False, prevspeed=0 }
+testLoco = Locomotive { slot=9, speed=0, ide=2, direction=FWD, waiting=False, prevspeed=0, path=[("C1",["fuck yes","you prick"])] }
 
 testLoco2 :: Locomotive
-testLoco2 = Locomotive { slot=8, speed=0, ide=2, direction=FWD, waiting=False, prevspeed=0 }
+testLoco2 = Locomotive { slot=8, speed=0, ide=2, direction=FWD, waiting=False, prevspeed=0, path=[] }
 
 testLoco3 :: Locomotive
-testLoco3 = Locomotive { slot=10, speed=114, ide=2, direction=FWD, waiting=False, prevspeed=0 }
+testLoco3 = Locomotive { slot=10, speed=114, ide=2, direction=FWD, waiting=False, prevspeed=0, path=[] }
 
 a1 :: Section
 a1 = Section { state=Empty, prev=["D1"], next=["B1"], speedlim=113, loco=Noloco, sid="A1", prevturn=Noturn, nextturn=Noturn }
