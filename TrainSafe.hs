@@ -23,12 +23,13 @@ makeSafe t (Turnout, m) | containsLoco (getSection t (turnid m)) = makeSafe t (S
 
 -- | Given a sensor input message, ensure safety of layout
 checkSensor :: Layout -> Message -> ([TrackInstruction], Layout)
-checkSensor t s = (g++a++c++e, f)
+checkSensor t s = (h++g++a++c++e, f)
 	where
 		(a,b) = checkWaitingLocos t
 		(c,d) = checkMerging b (sec b)
 		(e,f) = locoCheckNextSection d (sec d)
 		g = sensorSpeedCheck t (sec t)
+		h = checkAgainstSwitch t (sec t)
 		sec m = locoFromSensorMessage m s
 
 -- | Given sensor message, ensure speed of responsible loco is safe
@@ -164,7 +165,15 @@ checkFollowingSpeeds _ _ = []
 
 
 
+checkAgainstSwitch :: Layout -> Section -> [TrackInstruction]
+checkAgainstSwitch t s | intoSwitch t s d = setSwitchToMerge (findNextSection t s d) (sid s) d
+					   | otherwise = []
+	where
+		d = direction (loco s)
 
+intoSwitch :: Layout -> Section -> Direction -> Bool
+intoSwitch t s FWD = length (prev (findNextSection t s FWD)) > 1
+intoSwitch t s BKW = length (next (findNextSection t s BKW)) > 1 
 
 
 

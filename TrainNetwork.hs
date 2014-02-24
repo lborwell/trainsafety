@@ -21,12 +21,19 @@ doit :: Layout -> Handle -> Handle -> IO ()
 doit t rec send = do
   msg <- hGetLine rec
   putStrLn $ "Inc: " ++ msg
-  let (m,newtrack) = TSUpd.process t msg
-  let (routeout,routetrack) = TR.process newtrack m
-  let (safeout,safetrack) = TS.process routetrack m
-  sendmessages (routeout ++ safeout) send
-  putStrLn $ (show safetrack) ++ "\n"
-  doit safetrack rec send
+  let (mess,track) = process t msg
+  sendmessages mess send
+  putStrLn $ (show track) ++ "\n"
+  doit track rec send
+
+process :: Layout -> String -> ([TrackInstruction], Layout)
+process t s = (routeout++safeout, safetrack)
+  where
+    (m,newtrack) = TSUpd.process t s
+    (routeout,routetrack) = TR.process newtrack m
+    (safeout,safetrack) = TS.process routetrack m
+
+
 
 sendmessages :: [String] -> Handle -> IO ()
 sendmessages m h = do
