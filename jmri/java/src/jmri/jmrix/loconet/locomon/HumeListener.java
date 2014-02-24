@@ -71,6 +71,8 @@ public class HumeListener implements Runnable{
                 while(rec == null)
                     rec = instream.readLine();
                 
+                System.out.println("Rec: " + rec);
+                
                 Scanner s = new Scanner(rec);
                 s.useDelimiter(" ");
                 
@@ -83,8 +85,8 @@ public class HumeListener implements Runnable{
                     setSpeed(l,t,s.nextInt());
                 }else if(i==1){
                     //reverse train
-                    String dir = s.next();
                     Locomotive l = locos.get(addrFromSlot(Integer.valueOf(s.nextInt())));
+                    String dir = s.next();
                     LocoNetThrottle t = getThrottle(l);
                     t.setIsForward(dir.equals("fwd"));
                 }else if(i==2){

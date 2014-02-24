@@ -155,7 +155,8 @@ process t m@(SpeedMessage {}) = ([],t)
 process t m@(TurnoutMessage {}) = ([],t)
 
 checkLoco :: Layout -> Section -> ([TrackInstruction],Layout)
-checkLoco t s | sid s == fst (head p) = (snd (head p), setSection t (setSectionLoco s (l { path=tail p })))
+checkLoco t s | p == [] = ([],t)
+			  | sid s == fst (head p) = (snd (head p), setSection t (setSectionLoco s (l { path=tail p })))
 			  | otherwise = ([],t)
 	where 
 		l = loco s
