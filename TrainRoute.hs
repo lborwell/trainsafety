@@ -12,8 +12,8 @@ import Control.Monad (foldM)
 import Data.Set as S
 import qualified Data.Map as Map
 
-pathBetween :: Layout -> SensorID -> SensorID -> [Section]
-pathBetween t from to = undefined
+pathBetween :: Layout -> DijkStruct -> SensorID -> SensorID -> [(SensorID,[TrackInstruction])]
+pathBetween t d from to = pathToInstrs t (doAPath d from to) (getLocoBySensorID t from)
 
 
 
@@ -84,7 +84,7 @@ layoutAdjList :: Layout -> Array Int [(Int, Int)]
 layoutAdjList t = listArray (0, (trackLength t)-1) (buildArr (layoutNumSids t))
 	where
 		buildArr [] = []
-		buildArr ((a,b):xs) = [[(x,1) | x <- Prelude.map ((layoutSidNumsMap t) Map.!) ((next (sec b)) ++ (prev (sec b))) ]] ++ buildArr xs
+		buildArr ((_,b):xs) = [[(x,1) | x <- Prelude.map ((layoutSidNumsMap t) Map.!) ((next (sec b)) ++ (prev (sec b))) ]] ++ buildArr xs
 		sec y = getSection t y
 
 numsToSids :: Map.Map Int String -> [Int] -> [String]
@@ -100,34 +100,37 @@ makeStruct :: Layout -> DijkStruct
 makeStruct t = DijkStruct { numToSid=(layoutNumSidsMap t), sidToNum=(layoutSidNumsMap t), adjList=(layoutAdjList t)}
 
 doAPath :: DijkStruct -> SensorID -> SensorID -> [SensorID]
-doAPath d from to = Prelude.map ((numToSid d) Map.!) path
+doAPath d from to = Prelude.map ((numToSid d) Map.!) route
 	where
 		getNum a = (sidToNum d) Map.! a
-		path = shortest_path_to (getNum to) (-1) (snd (dijkstra (getNum from) (-1) (adjList d)))
+		route = shortest_path_to (getNum to) (-1) (snd (dijkstra (getNum from) (-1) (adjList d)))
 
+-- | Check first join
 pathToInstrs :: Layout -> [SensorID] -> Locomotive -> [(SensorID,[TrackInstruction])]
+pathToInstrs _ [] _ = []
 pathToInstrs _ (a:[]) l = [(a,[stopLoco l])]
---pathToInstrs t (a:b:[]) l = (a,[setLocoDirection l (directionBetween seca secb)])
-pathToInstrs t x@(a:b:xs) l = (a,[setLocoDirection l (directionBetween seca secb)]) : pathToInstrs' t x l
+pathToInstrs t x@(a:b:_) l = (a, processJoinSwitch t (seca,secb) d ++ setLocoDirection l d) : pathToInstrs' t x l
 	where
 		seca = getSection t a
 		secb = getSection t b
+		d = directionBetween seca secb
 
-
+-- | Check the rest
 pathToInstrs' :: Layout -> [SensorID] -> Locomotive -> [(SensorID,[TrackInstruction])]
-pathToInstrs' t (x:[]) l = [(x,[stopLoco l])]
-pathToInstrs' t (a:b:[]) l = [(b,[stopLoco l])]
+pathToInstrs' _ [] _ = []
+pathToInstrs' _ (x:[]) l = [(x,[stopLoco l])]
+pathToInstrs' _ (_:b:[]) l = [(b,[stopLoco l])]
 pathToInstrs' t (a:b:xs) l = (b, processJoin t (a,b,(head xs)) l) : pathToInstrs' t (b:xs) l
 
 processJoin :: Layout -> (SensorID, SensorID, SensorID) -> Locomotive -> [TrackInstruction]
-processJoin t (from, curr, to) l = processJoinSwitch t (b,c) (directionBetween b c) ++ processJoinDirection t (a,b,c) l
+processJoin t (from, curr, to) l = processJoinSwitch t (b,c) (directionBetween b c) ++ processJoinDirection (a,b,c) l
 	where
 		a = getSection t from
 		b = getSection t curr
 		c = getSection t to
 
-processJoinDirection :: Layout -> (Section,Section,Section) -> Locomotive -> [TrackInstruction]
-processJoinDirection t (a,b,c) l | d /= d' = reverseLoco l
+processJoinDirection :: (Section,Section,Section) -> Locomotive -> [TrackInstruction]
+processJoinDirection (a,b,c) l | d /= d' = setLocoDirection l d'
 								 | otherwise = []
 	where
 		d = directionBetween a b
@@ -135,7 +138,6 @@ processJoinDirection t (a,b,c) l | d /= d' = reverseLoco l
 
 processJoinSwitch :: Layout -> (Section,Section) -> Direction -> [TrackInstruction]
 processJoinSwitch t (a,b) FWD | nextturn a == Noturn = []
-							  -- | otherwise = setSwitchToDiverge t a (sid b) FWD
                               | otherwise = setDivergingSwitch t a (sid b) FWD
 processJoinSwitch t (a,b) BKW | prevturn a == Noturn = []
 							  | otherwise = setDivergingSwitch t a (sid b) BKW
@@ -144,6 +146,20 @@ directionBetween :: Section -> Section -> Direction
 directionBetween from to | (sid to) `elem` (next from) = FWD
 						 | otherwise = BKW
 
+
+
+process :: Layout -> Message -> ([TrackInstruction],Layout)
+process t m@(SensorMessage {}) = checkLoco t (locoFromSensorMessage t m)
+process t m@(DirectionMessage {}) = ([],t)
+process t m@(SpeedMessage {}) = ([],t)
+process t m@(TurnoutMessage {}) = ([],t)
+
+checkLoco :: Layout -> Section -> ([TrackInstruction],Layout)
+checkLoco t s | sid s == fst (head p) = (snd (head p), setSection t (setSectionLoco s (l { path=tail p })))
+			  | otherwise = ([],t)
+	where 
+		l = loco s
+		p = path l
 
 
 main :: IO ()
@@ -161,6 +177,7 @@ runrun :: DijkStruct -> Layout -> IO ()
 runrun s t = do
     putStrLn "Enter path (loco id from to):"
     inp <- getLine
-    let (slot:from:to:_) = words inp
-    putStrLn (show (pathToInstrs t (doAPath s from to) (getLocoBySlot t (read slot))))
+    let (from:to:_) = words inp
+    putStrLn (show (pathBetween t s from to))
+    --putStrLn (show (pathToInstrs t (doAPath s from to) (getLocoBySlot t (read slot))))
     runrun s t

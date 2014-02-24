@@ -80,6 +80,7 @@ data Locomotive = Locomotive { slot :: Int
 							 , direction :: Direction
 							 , waiting :: Bool
 							 , prevspeed :: Int
+							 , path :: [(SensorID,[TrackInstruction])]
 							 } | Noloco
 
 instance Eq Locomotive where
@@ -149,3 +150,40 @@ findNextSection t s@(Section { nextturn=Unset }) FWD = getSection t (head (next 
 findNextSection t s@(Section { prevturn=Unset }) BKW = getSection t (head (prev s))
 findNextSection t s@(Section { nextturn=Set }) FWD = getSection t (head (tail (next s)))
 findNextSection t s@(Section { prevturn=Set }) BKW = getSection t (head (tail (prev s)))
+
+-- | Does the section contain a loco
+containsLoco :: Section -> Bool
+containsLoco s = (loco s) /= Noloco
+
+-- | Track -> All sections containing a loco
+listLocos :: Layout -> [Section]
+listLocos t = searchLayout t containsLoco
+
+
+-- | Given a sensor message, find the location of the responsible loco
+locoFromSensorMessage :: Layout -> Message -> Section
+locoFromSensorMessage t (SensorMessage {upd=Hi,updid=sd}) | state sec == Occupied = sec
+														  | otherwise = findAdjacentLoco t sec Hi
+	where sec = getSection t sd
+locoFromSensorMessage t (SensorMessage {upd=Low,updid=sd}) | state sec == Justleft = sec
+														   | otherwise = findAdjacentLoco t sec Low
+	where sec = getSection t sd
+locoFromSensorMessage _ (SpeedMessage {}) = error "locoFromSensorMessage given non-sensor message"
+locoFromSensorMessage _ (DirectionMessage {}) = error "locoFromSensorMessage given non-sensor message"
+locoFromSensorMessage _ (TurnoutMessage {}) = error "locoFromSensorMessage given non-sensor message"
+
+
+-- | Called by locoFromSensorMessage, finds loco when sensor was triggered in adjacent
+-- section
+findAdjacentLoco :: Layout -> Section -> SensorUpdate -> Section
+findAdjacentLoco t s Hi | containsLoco nexts && direction (loco nexts) == BKW = nexts
+						| containsLoco prevs && direction (loco prevs) == FWD = prevs
+	where
+		nexts = findNextSection t s FWD
+		prevs = findNextSection t s BKW
+findAdjacentLoco t s Low | containsLoco nexts && direction (loco nexts) == FWD = nexts
+						 | containsLoco prevs && direction (loco prevs) == BKW = prevs
+	where
+		nexts = findNextSection t s FWD
+		prevs = findNextSection t s BKW
+findAdjacentLoco _ _ _ = error "findAdjacentLoco no adjacent loco"

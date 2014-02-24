@@ -1,6 +1,6 @@
 module TrainSafe where
 
-import Testtracks
+import Testtracks()
 
 import TrainControl
 
@@ -37,30 +37,6 @@ sensorSpeedCheck t s | l == Noloco = []
 				     | otherwise = checkSpeed t (SpeedMessage { fromslot=(slot l), newspeed=(speed l)})
 	where l = loco s
 
--- | Given a sensor message, find the location of the responsible loco
-locoFromSensorMessage :: Layout -> Message -> Section
-locoFromSensorMessage t (SensorMessage {upd=Hi,updid=sd}) | state sec == Occupied = sec
-														  | otherwise = findAdjacentLoco t sec Hi
-	where sec = getSection t sd
-locoFromSensorMessage t (SensorMessage {upd=Low,updid=sd}) | state sec == Justleft = sec
-														  | otherwise = findAdjacentLoco t sec Low
-	where sec = getSection t sd
-
-
--- | Called by locoFromSensorMessage, finds loco when sensor was triggered in adjacent
--- section
-findAdjacentLoco :: Layout -> Section -> SensorUpdate -> Section
-findAdjacentLoco t s Hi | containsLoco nexts && direction (loco nexts) == BKW = nexts
-						| containsLoco prevs && direction (loco prevs) == FWD = prevs
-	where
-		nexts = findNextSection t s FWD
-		prevs = findNextSection t s BKW
-findAdjacentLoco t s Low | containsLoco nexts && direction (loco nexts) == FWD = nexts
-						 | containsLoco prevs && direction (loco prevs) == BKW = prevs
-	where
-		nexts = findNextSection t s FWD
-		prevs = findNextSection t s BKW
-
 -- | Check next section for a loco. Pause if it exists.
 locoCheckNextSection :: Layout -> Section -> ([TrackInstruction], Layout)
 locoCheckNextSection t s | not (containsLoco s) = ([],t)
@@ -72,7 +48,7 @@ checkMerging :: Layout -> Section -> ([TrackInstruction],Layout)
 checkMerging t s@(Section { loco=(Locomotive { direction=d }) }) | sec == s = ([],t)
 																 | otherwise = handleMerging t s sec
 	where sec = findMerging t s d
-checkMerging t s@(Section { loco=Noloco }) = ([], t)
+checkMerging t (Section { loco=Noloco }) = ([], t)
 
 -- | Find locomotive we are merging with. If no such loco exists, return
 -- input section. 
@@ -112,12 +88,12 @@ handleMerging t s s2 | slower s s2 == s = (a ++ e,b)
 	where
 		(a,b) = pauseLoco t s
 		(c,d) = pauseLoco t s2
-		e = pointSwitchAt b (findNextSection b s (direction (loco s))) s2
-		f = pointSwitchAt d (findNextSection d s2 (direction (loco s2))) s
+		e = pointSwitchAt (findNextSection b s (direction (loco s))) s2
+		f = pointSwitchAt (findNextSection d s2 (direction (loco s2))) s
 
 -- | Set switch in from to point to to
-pointSwitchAt :: Layout -> Section -> Section -> [TrackInstruction]
-pointSwitchAt t from to = setSwitchToMerge t from (sid to) (direction (loco to))
+pointSwitchAt :: Section -> Section -> [TrackInstruction]
+pointSwitchAt from to = setSwitchToMerge from (sid to) (direction (loco to))
 
 -- | Check waiting locos to see if it is safe to resume movement
 checkWaitingLocos :: Layout -> ([TrackInstruction], Layout)
@@ -148,7 +124,7 @@ unpauseMergingLoco :: Layout -> Section -> ([TrackInstruction],Layout)
 unpauseMergingLoco t s = (c ++ a,b)
 	where
 		(a,b) = unpauseLoco t s
-		c = pointSwitchAt b (findNextSection b s (direction (loco s))) s
+		c = pointSwitchAt (findNextSection b s (direction (loco s))) s
 
 -------------------------------------------------
 ---
@@ -170,10 +146,10 @@ checkSpeedLimit s | speed l > speedlim s = [setLocoSpeed l (speedlim s)]
 
 -- | If the locomotive is following another, ensure it is going slower than the leading train
 checkFollowing :: Layout -> Section -> [TrackInstruction]
-checkFollowing t s = speedCheckNextSection t s (nextNextSection t s (direction (loco s)))
+checkFollowing t s = speedCheckNextSection s (nextNextSection t s (direction (loco s)))
 
-speedCheckNextSection :: Layout -> Section -> Section -> [TrackInstruction]
-speedCheckNextSection t s1 s2 | not (containsLoco s2) = []
+speedCheckNextSection :: Section -> Section -> [TrackInstruction]
+speedCheckNextSection s1 s2 | not (containsLoco s2) = []
 							  | direction l1 /= direction l2 = (stopLoco l1) : [stopLoco l2]
 							  | otherwise = checkFollowingSpeeds l1 l2
 	where

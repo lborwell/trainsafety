@@ -7,6 +7,7 @@ import TrainSafetyTypes
 import Testtracks
 import qualified TrainSafe as TS
 import qualified TrainStateUpdate as TSUpd
+import qualified TrainRoute as TR
 
 
 main :: IO ()
@@ -20,9 +21,10 @@ doit :: Layout -> Handle -> Handle -> IO ()
 doit t rec send = do
   msg <- hGetLine rec
   putStrLn $ "Inc: " ++ msg
-  let(m,newtrack) = TSUpd.process t msg
-  let (safeout,safetrack) = TS.process newtrack m
-  sendmessages safeout send
+  let (m,newtrack) = TSUpd.process t msg
+  let (routeout,routetrack) = TR.process newtrack m
+  let (safeout,safetrack) = TS.process routetrack m
+  sendmessages (routeout ++ safeout) send
   putStrLn $ (show safetrack) ++ "\n"
   doit safetrack rec send
 
