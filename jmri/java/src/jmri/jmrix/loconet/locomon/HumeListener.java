@@ -98,7 +98,7 @@ public class HumeListener implements Runnable{
                     //delayed action
                     String ns = "";
                     while(s.hasNext()) ns += s.next() + " ";
-                    (new Wait(this,ns)).start();
+                    new Thread(new Wait(this,ns)).start();
                 }
         }catch(Exception e){ e.printStackTrace(); }
     }
@@ -144,7 +144,7 @@ public class HumeListener implements Runnable{
     private class Wait implements Runnable{
         HumeListener l; String s;
         public Wait(HumeListener l, String s){ this.l = l; this.s = s; }
-        public void run(){ Thread.sleep(400); l.process(s); }
+        public void run(){ try{ Thread.sleep(5000); }catch(Exception e){ e.printStackTrace(); } l.process(s); }
     }
     
 }

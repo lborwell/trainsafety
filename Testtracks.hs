@@ -3,7 +3,7 @@ module Testtracks where
 import TrainSafetyTypes
 
 testLoco :: Locomotive
-testLoco = Locomotive { slot=9, speed=113, ide=2, direction=FWD, waiting=False, prevspeed=0, path=[("B1",[]),("C1",["2 C1 bkw set","2 B2 fwd set","0 9 0","1 9 bkw","0 9 113"]),("B2",[]),("A2",["0 9 0"])] }
+testLoco = Locomotive { slot=9, speed=113, ide=2, direction=FWD, waiting=False, prevspeed=0, path=[("B1",[]),("C1",["2 C1 bkw set","2 B2 fwd set","0 9 0","1 9 bkw","3 0 9 113"]),("B2",[]),("A2",["0 9 0"])] }
 
 testLoco2 :: Locomotive
 testLoco2 = Locomotive { slot=8, speed=0, ide=2, direction=FWD, waiting=False, prevspeed=0, path=[] }
@@ -24,7 +24,7 @@ b2 :: Section
 b2 = Section { state=Empty, prev=["A2"], next=["C2","C1"], speedlim=113, loco=Noloco, sid="B2", prevturn=Noturn, nextturn=Unset }
 
 c1 :: Section
-c1 = Section { state=Empty, prev=["B1","B2"], next=["D1"], speedlim=113, loco=Noloco, sid="C1", prevturn=Set, nextturn=Noturn }
+c1 = Section { state=Empty, prev=["B1","B2"], next=["D1"], speedlim=113, loco=Noloco, sid="C1", prevturn=Unset, nextturn=Noturn }
 
 c2 :: Section
 c2 = Section { state=Empty, prev=["B2"], next=["D2"], speedlim=113, loco=Noloco, sid="C2", prevturn=Noturn, nextturn=Noturn }
