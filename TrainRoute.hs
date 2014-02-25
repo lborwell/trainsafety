@@ -131,7 +131,7 @@ processJoin t (from, curr, to) l = processJoinSwitch t (b,c) (directionBetween b
 
 processJoinDirection :: (Section,Section,Section) -> Locomotive -> [TrackInstruction]
 processJoinDirection (a,b,c) l | d /= d' = setLocoDirection l d'
-								 | otherwise = []
+							   | otherwise = []
 	where
 		d = directionBetween a b
 		d' = directionBetween b c

@@ -73,30 +73,53 @@ public class HumeListener implements Runnable{
                 
                 System.out.println("Rec: " + rec);
                 
+                process(rec);
+            }catch(Exception e){ e.printStackTrace(); }
+            rec = null;
+        }
+    }
+
+    public void process(String rec){
+        try{
                 Scanner s = new Scanner(rec);
                 s.useDelimiter(" ");
                 
                 int i = s.nextInt();
                 if(i == 0){
                     //train
-                    int c = s.nextInt();
-                    Locomotive l = locos.get(addrFromSlot(c));
-                    LocoNetThrottle t = getThrottle(l);
-                    setSpeed(l,t,s.nextInt());
+                    setLocoSpeed(s);
                 }else if(i==1){
                     //reverse train
-                    Locomotive l = locos.get(addrFromSlot(Integer.valueOf(s.nextInt())));
-                    String dir = s.next();
-                    LocoNetThrottle t = getThrottle(l);
-                    t.setIsForward(dir.equals("fwd"));
+                    setLocoDirection(s);
                 }else if(i==2){
                     //turnout
-                    HumeTurnout ht = turns.get(s.next() + " " + s.next());
-                    ht.set(HumeTurnout.setToBool(s.next()));
+                    setTurnout(s);
+                }else if(i==3){
+                    //delayed action
+                    String ns = "";
+                    while(s.hasNext()) ns += s.next() + " ";
+                    (new Wait(this,ns)).start();
                 }
-            }catch(Exception e){ e.printStackTrace(); }
-            rec = null;
-        }
+        }catch(Exception e){ e.printStackTrace(); }
+    }
+
+    synchronized void setLocoSpeed(Scanner s){
+        int c = s.nextInt();
+        Locomotive l = locos.get(addrFromSlot(c));
+        LocoNetThrottle t = getThrottle(l);
+        setSpeed(l,t,s.nextInt());
+    }
+
+    synchronized void setLocoDirection(Scanner s){
+        Locomotive l = locos.get(addrFromSlot(Integer.valueOf(s.nextInt())));
+        String dir = s.next();
+        LocoNetThrottle t = getThrottle(l);
+        t.setIsForward(dir.equals("fwd"));
+    }
+
+    synchronized void setTurnout(Scanner s){
+        HumeTurnout ht = turns.get(s.next() + " " + s.next());
+        ht.set(HumeTurnout.setToBool(s.next()));
     }
     
     LocoNetThrottle getThrottle(Locomotive l){
@@ -116,6 +139,12 @@ public class HumeListener implements Runnable{
     
     int addrFromSlot(int i){
         return slottoaddr.get(i);
+    }
+
+    private class Wait implements Runnable{
+        HumeListener l; String s;
+        public Wait(HumeListener l, String s){ this.l = l; this.s = s; }
+        public void run(){ Thread.sleep(400); l.process(s); }
     }
     
 }

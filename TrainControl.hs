@@ -62,11 +62,12 @@ setLocoDirection l d | direction l == d = []
 
 reverseLoco :: Locomotive -> [TrackInstruction]
 --reverseLoco l = stopLoco l : [setLocoDirection l (rev (direction l))] ++ [setLocoSpeed l (speed l)]
-reverseLoco l = stopLoco l : ["1 " ++ show (slot l) ++ " " ++ d] ++ [setLocoSpeed l (speed l)]
+reverseLoco l = stopLoco l : ["1 " ++ show (slot l) ++ " " ++ d] ++ [waitInstr (setLocoSpeed l (speed l))]
 	where
 		d = if (direction l) == FWD then "bkw" else "fwd"
 
-
+waitInstr :: TrackInstruction -> TrackInstruction
+waitInstr s = "3 " ++ s
 
 -- | Find the section two steps ahead
 nextNextSection :: Layout -> Section -> Direction -> Section
