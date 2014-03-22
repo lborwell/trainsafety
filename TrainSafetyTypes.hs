@@ -81,6 +81,7 @@ data Locomotive = Locomotive { slot :: Int
 							 , waiting :: Bool
 							 , prevspeed :: Int
 							 , path :: [(SensorID,[TrackInstruction])]
+							 , fastspeed :: Int
 							 } | Noloco
 
 instance Eq Locomotive where

@@ -32,6 +32,7 @@ parseSpeed (_:a:b:_) = SpeedMessage { fromslot=(read a), newspeed=(read b) }
 
 -- | Update layout to represent new loco speed
 speedChange :: Layout -> Message -> Layout
+--speedChange t m = setSection t (sec { loco=((loco sec) { speed=(newspeed m), fastspeed=(newspeed m) }) })
 speedChange t m = setSection t (sec { loco=((loco sec) { speed=(newspeed m) }) })
 	where sec = getSectionBySlot t (fromslot m)
 
@@ -110,11 +111,7 @@ data D = NXT | PRV
 
 correctDirection :: Section -> SensorUpdate -> D -> Bool
 correctDirection ns _ _ | loco ns == Noloco = True
-correctDirection ns Hi NXT | direction (loco ns) == BKW = True
-						   | otherwise = False
-correctDirection ns Hi PRV | direction (loco ns) == FWD = True
-						   | otherwise = False
-correctDirection ns Low NXT | direction (loco ns) == FWD = True
-							| otherwise = False
-correctDirection ns Low PRV | direction (loco ns) == BKW = True
-							| otherwise = False
+correctDirection ns Hi NXT = direction (loco ns) == BKW
+correctDirection ns Hi PRV = direction (loco ns) == FWD
+correctDirection ns Low NXT = direction (loco ns) == FWD
+correctDirection ns Low PRV = direction (loco ns) == BKW

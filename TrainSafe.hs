@@ -23,18 +23,18 @@ makeSafe t (Turnout, m) | containsLoco (getSection t (turnid m)) = makeSafe t (S
 
 -- | Given a sensor input message, ensure safety of layout
 checkSensor :: Layout -> Message -> ([TrackInstruction], Layout)
-checkSensor t s = (h++g++a++c++e, f)
+checkSensor t s = (i++g++a++c++e, h)
 	where
 		(a,b) = checkWaitingLocos t
 		(c,d) = checkMerging b (sec b)
 		(e,f) = locoCheckNextSection d (sec d)
-		g = sensorSpeedCheck t (sec t)
-		h = checkAgainstSwitch t (sec t)
+		(g,h) = sensorSpeedCheck f (sec f)
+		i = checkAgainstSwitch t (sec t)
 		sec m = locoFromSensorMessage m s
 
 -- | Given sensor message, ensure speed of responsible loco is safe
-sensorSpeedCheck :: Layout -> Section -> [TrackInstruction]
-sensorSpeedCheck t s | l == Noloco = []
+sensorSpeedCheck :: Layout -> Section -> ([TrackInstruction], Layout)
+sensorSpeedCheck t s | l == Noloco = ([],t)
 				     | otherwise = checkSpeed t (SpeedMessage { fromslot=(slot l), newspeed=(speed l)})
 	where l = loco s
 
@@ -134,15 +134,16 @@ unpauseMergingLoco t s = (c ++ a,b)
 -------------------------------------------------
 
 -- | Check if locomotive is violating speed constraints
-checkSpeed :: Layout -> Message -> [TrackInstruction]
-checkSpeed t s = (checkSpeedLimit sec) ++ (checkFollowing t sec)
+checkSpeed :: Layout -> Message -> ([TrackInstruction], Layout)
+checkSpeed t s = ((fst sl) ++ (checkFollowing t sec), snd sl)
 	where
+		sl = checkSpeedLimit t sec
 		sec = getSectionBySlot t (fromslot s)
 
 -- | If the locomotive is exceeding speed limit, slow it to the limit
-checkSpeedLimit :: Section -> [TrackInstruction]
-checkSpeedLimit s | speed l > speedlim s = [setLocoSpeed l (speedlim s)]
-				  | otherwise = []
+checkSpeedLimit :: Layout -> Section -> ([TrackInstruction], Layout)
+checkSpeedLimit t s | speed l > speedlim s = ([setLocoSpeed l (speedlim s)], updateLoco t (l { fastspeed=(speed l) }))
+					| otherwise = ([],t)
 	where l = loco s
 
 -- | If the locomotive is following another, ensure it is going slower than the leading train

@@ -154,13 +154,22 @@ process t m@(DirectionMessage {}) = ([],t)
 process t m@(SpeedMessage {}) = ([],t)
 process t m@(TurnoutMessage {}) = ([],t)
 
-checkLoco :: Layout -> Section -> ([TrackInstruction],Layout)
-checkLoco t s | p == [] = ([],t)
+checkLocoSpeed :: Section -> [TrackInstruction]
+checkLocoSpeed s | fastspeed l > speed l = [setLocoSpeed l (fastspeed l)]
+				 | otherwise = []
+	where l = loco s
+
+checkLocoPath :: Layout -> Section -> ([TrackInstruction],Layout)
+checkLocoPath t s | p == [] = ([],t)
 			  | sid s == fst (head p) = (snd (head p), setSection t (setSectionLoco s (l { path=tail p })))
 			  | otherwise = ([],t)
 	where 
 		l = loco s
 		p = path l
+
+checkLoco :: Layout -> Section -> ([TrackInstruction],Layout)
+checkLoco t s = ((checkLocoSpeed s) ++ a,b)
+	where (a,b) = checkLocoPath t s
 
 
 main :: IO ()
