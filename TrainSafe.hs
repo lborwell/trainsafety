@@ -142,7 +142,8 @@ checkSpeed t s = ((fst sl) ++ (checkFollowing t sec), snd sl)
 
 -- | If the locomotive is exceeding speed limit, slow it to the limit
 checkSpeedLimit :: Layout -> Section -> ([TrackInstruction], Layout)
-checkSpeedLimit t s | speed l > speedlim s = ([setLocoSpeed l (speedlim s)], updateLoco t (l { fastspeed=(speed l) }))
+checkSpeedLimit t s | speed l < speedlim s = ([], updateLoco t (l { fastspeed=(speed l) }))
+					| speed l > speedlim s = ([setLocoSpeed l (speedlim s)], updateLoco t (l { fastspeed=(speed l) }))
 					| otherwise = ([],t)
 	where l = loco s
 
